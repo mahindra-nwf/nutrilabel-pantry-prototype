@@ -1,4 +1,4 @@
-﻿# Handoff: NutriLabel Pantry prototype
+# Handoff: NutriLabel Pantry prototype
 
 Status: **first version done.** Everything the Raw Materials module does (E:\Pantry\Nutrilabel, branch
 `feature/duplicate-ingredient-report`) is clickable here with made-up data, plus a few Pantry additions (draft â†’
@@ -94,4 +94,4 @@ quote, `preferred`, `quoteCount`, `hasNutrition`), `costQuote`, `issues` (needs-
 - All ingredients, suppliers, people, prices and emails are made up. Nutrition values are rough generic numbers.
 - Seed timestamps are relative to the first page load (and to Reset demo data).
 
-- **The New button follows the tab.** Food → "New ingredient" (Food or Prepackaged Food only), Packaging → "New packaging" (type fixed, unit defaults to each), elsewhere → "New item" (all three types). Editing keeps food items to the food types and packaging to packaging.
+- **The New button follows the tab.** Food → "New ingredient" (Food or Prepackaged Food only), Packaging → "New packaging" (type fixed, unit defaults to each), no New button on the other tabs. Editing keeps food items to the food types and packaging to packaging.

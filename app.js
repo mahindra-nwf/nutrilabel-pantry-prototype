@@ -98,9 +98,9 @@
   function openPanel(ingredientId, supplierId) { go({ panel: { ingredientId, supplierId: supplierId || null } }); }
   function closePanel() { go({ panel: null }); }
 
-  // the New button follows the tab: Food → ingredient (food types only), Packaging → packaging, anywhere else → any item
+  // the New button only shows on the Food (→ ingredient) and Packaging (→ packaging) tabs; null = no button
   const newKind = () => (state.view === 'food' || state.view === 'packaging' ? state.view : null);
-  const newLabel = () => ({ food: 'New ingredient', packaging: 'New packaging' })[newKind()] || 'New item';
+  const newLabel = () => ({ food: 'New ingredient', packaging: 'New packaging' })[newKind()] || null;
   function newIngredient() { NL.editor.open(null, { kind: newKind(), onSaved: (i, supId) => { if (!isList()) state.view = 'all'; openPanel(i.id, supId); } }); }
   function editIngredient(id, supplierId) { NL.editor.open(id, { supplierId, onSaved: (i, supId) => openPanel(i.id, supId || supplierId) }); }
   function recordPrice(ingredientId, supplierId) { NL.quoteDialog.open({ ingredientId, supplierId }, { onSaved: (q) => openPanel(ingredientId, q.supplierId) }); }
