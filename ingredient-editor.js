@@ -5,8 +5,12 @@
 
   function open(id, opts = {}) {
     const existing = id ? store.getIngredient(id) : null;
-    const i = existing || { name: '', category: '', itemType: 'food', n: Object.fromEntries(store.NUTRIENTS.map((x) => [x.key, null])), allergens: [], allergenStatus: 'not_declared',
-      allergenSources: {}, statement: '', uom: 'lbs', packQty: null, packConfig: '', netWeightG: null, grossWeightG: null, internalCode: '', sources: [] };
+    // which item types fit: Food tab (or a food item) → Food / Prepackaged Food; Packaging → Packaging only; elsewhere → all
+    const kind = existing ? (existing.itemType === 'packaging' ? 'packaging' : 'food') : opts.kind || null;
+    const types = store.ITEM_TYPES.filter((t) => !kind || (kind === 'packaging' ? t.key === 'packaging' : t.key !== 'packaging'));
+    const noun = { food: 'ingredient', packaging: 'packaging' }[kind] || 'item';
+    const i = existing || { name: '', category: kind === 'packaging' ? 'Packaging' : '', itemType: types[0].key, n: Object.fromEntries(store.NUTRIENTS.map((x) => [x.key, null])), allergens: [], allergenStatus: 'not_declared',
+      allergenSources: {}, statement: '', uom: kind === 'packaging' ? 'each' : 'lbs', packQty: null, packConfig: '', netWeightG: null, grossWeightG: null, internalCode: '', sources: [] };
     const startSupplier = opts.supplierId || (existing && existing.sources[0] && existing.sources[0].supplierId) || '';
     let dupAck = false;         // "I checked; continue with a separate ingredient"
     let staged = null;          // spec-sheet file to add on save
@@ -18,7 +22,7 @@
     const name = el('input.txt', { value: i.name, placeholder: 'e.g. Chicken Breast, raw', maxLength: 200 });
     const cat = NL.combo(i.category, store.categories(), { placeholder: 'Select or type new…' });
     const internal = el('input.txt', { value: i.internalCode || '', placeholder: 'Your own tracking code, if used' });
-    const typeRadios = el('div.pt-radios', {}, store.ITEM_TYPES.map((t) => el('label.pt-radio', {},
+    const typeRadios = el('div.pt-radios', {}, types.map((t) => el('label.pt-radio', {},
       el('input', { type: 'radio', name: 'itemType', value: t.key, checked: i.itemType === t.key, onchange: () => sync() }),
       el('span', {}, el('b', {}, t.label), el('span.faint', {}, t.hint)))));
     const itemType = () => typeRadios.querySelector('input:checked').value;
@@ -200,7 +204,7 @@
       NL.app.refresh();
     }
 
-    const saveBtn = el('button.btn.primary', { onclick: doSave }, existing ? 'Save changes' : 'Add ingredient');
+    const saveBtn = el('button.btn.primary', { onclick: doSave }, existing ? 'Save changes' : 'Add ' + noun);
     const body = el('div.pt-form', {},
       dupBox,
       el('div.pt-form-row', {},
@@ -208,7 +212,8 @@
           field('Name *', name),
           el('div.pt-form-row', {}, field('Category', cat.node), field('Internal product number', internal))),
         el('div.pt-form-col.narrow', {}, el('span.pt-label', {}, 'Spec sheet'), specBox)),
-      el('h3.pt-form-h', {}, 'Item type'), typeRadios,
+      types.length > 1 ? [el('h3.pt-form-h', {}, 'Item type'), typeRadios] : null, // one choice (packaging): nothing to pick
+      types.length > 1 ? null : el('div', { hidden: true }, typeRadios),
       el('h3.pt-form-h', {}, 'Supplier & price'),
       el('div.pt-form-row', {}, field('Supplier', supSel, null, 'grow'), field('Item number', sku)),
       supHint,
@@ -217,8 +222,8 @@
       el('div.pt-form-row', {}, netField, grossField),
       foodOnly,
       errBox);
-    const m = NL.modal(existing ? 'Edit ingredient' : 'Add ingredient', body, [el('button.btn', { onclick: () => m.close() }, 'Cancel'), saveBtn],
-      { wide: true, sticky: true, sub: existing ? existing.code + ' · ' + existing.status : 'New ingredients start as drafts until someone approves them.' });
+    const m = NL.modal((existing ? 'Edit ' : 'Add ') + noun, body, [el('button.btn', { onclick: () => m.close() }, 'Cancel'), saveBtn],
+      { wide: true, sticky: true, sub: existing ? existing.code + ' · ' + existing.status : 'New items start as drafts until someone approves them.' });
     sync();
     name.focus();
   }

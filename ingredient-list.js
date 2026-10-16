@@ -110,7 +110,7 @@
           el('div.pt-empty-ic', {}, total.length ? '⌕' : state.view === 'review' ? '✓' : '▤'),
           el('p', {}, total.length ? 'No ingredients match the current filters.' : state.view === 'review' ? 'Nothing needs review. Nice.' : 'No ingredients here yet.'),
           total.length ? el('button.btn', { onclick: () => NL.app.go({ category: '', supplierId: '', allergen: '', query: '' }) }, 'Clear filters')
-            : el('button.btn.primary', { onclick: () => NL.app.newIngredient() }, '＋ New ingredient'));
+            : el('button.btn.primary', { onclick: () => NL.app.newIngredient() }, '＋ ' + NL.app.newLabel()));
 
     NL.fill(main,
       el('div.pt-head', {},
@@ -120,7 +120,7 @@
           SUBS[state.view] ? el('div.faint.pt-head-sub', {}, SUBS[state.view]) : null),
         el('span.spacer'),
         el('button.btn', { onclick: () => NL.duplicates.open() }, '⧉ Check for duplicates'),
-        el('button.btn.primary', { onclick: () => NL.app.newIngredient() }, '＋ Add ingredient')),
+        el('button.btn.primary', { onclick: () => NL.app.newIngredient() }, '＋ ' + NL.app.newLabel())),
       filters(state),
       body);
   }

@@ -98,7 +98,10 @@
   function openPanel(ingredientId, supplierId) { go({ panel: { ingredientId, supplierId: supplierId || null } }); }
   function closePanel() { go({ panel: null }); }
 
-  function newIngredient() { NL.editor.open(null, { onSaved: (i, supId) => { if (!isList()) state.view = 'all'; openPanel(i.id, supId); } }); }
+  // the New button follows the tab: Food → ingredient (food types only), Packaging → packaging, anywhere else → any item
+  const newKind = () => (state.view === 'food' || state.view === 'packaging' ? state.view : null);
+  const newLabel = () => ({ food: 'New ingredient', packaging: 'New packaging' })[newKind()] || 'New item';
+  function newIngredient() { NL.editor.open(null, { kind: newKind(), onSaved: (i, supId) => { if (!isList()) state.view = 'all'; openPanel(i.id, supId); } }); }
   function editIngredient(id, supplierId) { NL.editor.open(id, { supplierId, onSaved: (i, supId) => openPanel(i.id, supId || supplierId) }); }
   function recordPrice(ingredientId, supplierId) { NL.quoteDialog.open({ ingredientId, supplierId }, { onSaved: (q) => openPanel(ingredientId, q.supplierId) }); }
   function editQuote(quoteId) { const q = store.getQuote(quoteId); NL.quoteDialog.open({ ingredientId: q.ingredientId, supplierId: q.supplierId, quoteId }, { onSaved: () => refresh() }); }
@@ -145,7 +148,7 @@
     NL.toast('Demo data reset.');
   }
 
-  NL.app = { state, go, refresh, openPanel, closePanel, newIngredient, editIngredient, recordPrice, editQuote, deleteRow, deleteIngredient, deleteQuote, recycled, toggleTheme, resetDemo, isList };
+  NL.app = { state, go, refresh, openPanel, closePanel, newIngredient, newLabel, editIngredient, recordPrice, editQuote, deleteRow, deleteIngredient, deleteQuote, recycled, toggleTheme, resetDemo, isList };
 
   readHash();
   refresh();
