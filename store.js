@@ -635,6 +635,22 @@
   function reset() { db = seed(); save(); }
   function me() { return copy(person(ME)); }
 
+
+  // Live: who may use this app is set on the Members page; without access, show a short message instead of the app
+  function noAccess(app) {
+    const show = () => {
+      document.body.innerHTML = '<main style="max-width:520px;margin:15vh auto;padding:24px;font:15px/1.5 system-ui,sans-serif">' +
+        '<h1 style="font-size:22px;margin:0 0 8px">No access to ' + app + '</h1>' +
+        '<p style="margin:0 0 16px;color:#667085">Ask an administrator to give you access on the Members page.</p>' +
+        '<a href="/" style="font-weight:600">← Home</a></main>';
+    };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', show); else show();
+  }
+  if (LIVE) {
+    fetch('/api/me', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null))
+      .then((me) => { if (me && me.apps && me.apps.pantry === 'none') noAccess('Pantry'); }).catch(() => {});
+  }
+
   window.store = {
     /** Live (clean) or Playground (demo data); see LIVE at the top */
     isLive: LIVE,
