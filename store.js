@@ -4,7 +4,11 @@
    Screens call these and get plain copies back; they never mutate store data directly.
    All data is made up: no real Northwest Frozen ingredients, suppliers or prices. */
 (function () {
-  const KEY = 'nlpantry.v1';
+  // Live vs Playground: inside the Northwest Frozen app (/pantry/) the Home page toggle sets the nl_mode cookie.
+  // Playground (and this site on its own) = the demo with made-up ingredients and suppliers. Live = the same screens,
+  // clean: no sample data, kept under its own key so the two never mix.
+  const LIVE = location.pathname.startsWith('/pantry/') && !/(?:^|; )nl_mode=playground(?:;|$)/.test(document.cookie);
+  const KEY = LIVE ? 'nlpantry.live.v1' : 'nlpantry.v1';
   const PREF = 'nlpantry.pref.';
   const ME = 'u1';
   const H = 3600e3, D = 24 * H;
@@ -67,6 +71,8 @@
   /* ---------- seed ---------- */
   function seed() {
     const now = Date.now();
+    if (LIVE) return { version: 1, people: [{ id: 'u1', name: 'You', email: '', role: 'admin', title: 'Northwest Frozen', initials: 'Y', color: '#2f6fed' }],
+      suppliers: [], ingredients: [], quotes: [], bin: [], seq: 0 };
     const people = [
       { id: 'u1', name: 'Jordan Lee', email: 'jordan@example.com', role: 'admin', title: 'Head of R&D', initials: 'JL', color: '#2f6fed' },
       { id: 'u2', name: 'Ana Ruiz', email: 'ana@example.com', role: 'editor', title: 'Sous chef', initials: 'AR', color: '#e8590c' },
@@ -630,6 +636,8 @@
   function me() { return copy(person(ME)); }
 
   window.store = {
+    /** Live (clean) or Playground (demo data); see LIVE at the top */
+    isLive: LIVE,
     NUTRIENTS, ALLERGENS, TREE_NUTS, WEIGHT_UOMS, UNIT_TO_G, SUPPLIER_CATEGORIES, ITEM_TYPES, BIN_HOURS,
     me, listIngredients, counts, getIngredient, categories, uoms, packConfigs, findByName,
     createIngredient, updateIngredient, setStatus,

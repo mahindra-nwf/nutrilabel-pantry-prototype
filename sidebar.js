@@ -20,9 +20,11 @@
         el('div.pt-nav-h', {}, 'More'),
         item('suppliers', '⛟', 'Suppliers', c.suppliers),
         item('bin', '♻', 'Recycle Bin', c.bin)),
-      el('div.pt-side-foot', {},
-        el('span.faint', {}, 'Made-up data, saved in this browser only.'),
-        el('button.btn.ghost.sm', { onclick: () => NL.app.resetDemo() }, '↺ Reset demo data')));
+      store.isLive
+        ? el('div.pt-side-foot', {}, el('span.faint', {}, 'Live · saved in this browser for now.'))
+        : el('div.pt-side-foot', {},
+          el('span.faint', {}, 'Made-up data, saved in this browser only.'),
+          el('button.btn.ghost.sm', { onclick: () => NL.app.resetDemo() }, '↺ Reset demo data')));
   }
 
   NL.sidebar = { render };

@@ -14,10 +14,12 @@
       });
       const me = store.me();
       bar.replaceChildren(
-        el('a.brand', { href: '#/all' }, 'NutriLabel ', el('small', {}, 'Pantry')),
+        el('a.btn', { href: location.pathname.startsWith('/pantry/') ? '/' : '../nutrilabel-home-prototype/', title: 'All apps' }, '← Home'),
+        el('a.brand', { href: '#/all' }, 'Northwest Frozen ', el('small', {}, 'Pantry')),
         el('label.pt-search', {}, el('span.ic', {}, '⌕'), search),
         el('span.spacer'),
-        el('span.tag', { title: 'Made-up data stored in this browser only' }, 'Prototype'),
+        store.isLive ? el('span.tag', { title: 'Saved in this browser for now' }, 'Live')
+          : el('span.tag', { title: 'Made-up data stored in this browser only' }, 'Playground'),
         el('button.btn.theme-btn', { id: 'themeBtn', title: 'Light / dark', onclick: () => NL.app.toggleTheme() }),
         el('span.pt-me', { title: me.name + ' · ' + me.title }, el('span.avatar', { style: { background: me.color } }, me.initials)));
     }
