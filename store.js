@@ -1,16 +1,17 @@
-/* store.js — the ONLY file that touches localStorage.
-   Every function here is a stand-in for a future database/API call (NLv4: ingredients, suppliers,
-   ingredient_sources + the Pantry columns listed in IDEAS.md).
-   Screens call these and get plain copies back; they never mutate store data directly.
-   All data is made up: no real Northwest Frozen ingredients, suppliers or prices. */
+/* store.js — the ONLY file that touches storage.
+   Playground: everything in this browser (localStorage), made-up data.
+   Live (inside the Northwest Frozen app): the organization's database through /api/pantry — the same ingredients the
+   Recipe Builder uses. The data stays in memory here exactly as in Playground; every save() sends what changed
+   (puts and deletes of ingredients, suppliers, prices and Recycle Bin items), and opening the page loads it all.
+   Screens call these functions and get plain copies back; they never mutate store data directly. */
 (function () {
   // Live vs Playground: inside the Northwest Frozen app (/pantry/) the Home page toggle sets the nl_mode cookie.
-  // Playground (and this site on its own) = the demo with made-up ingredients and suppliers. Live = the same screens,
-  // clean: no sample data, kept under its own key so the two never mix.
+  // Playground (and this site on its own) = the demo with made-up ingredients and suppliers. Live = the same screens
+  // on the organization's real data (database), starting empty until it has loaded.
   const LIVE = location.pathname.startsWith('/pantry/') && !/(?:^|; )nl_mode=playground(?:;|$)/.test(document.cookie);
   const KEY = LIVE ? 'nlpantry.live.v1' : 'nlpantry.v1';
   const PREF = 'nlpantry.pref.';
-  const ME = 'u1';
+  let ME = 'u1';
   const H = 3600e3, D = 24 * H;
   const BIN_HOURS = 72;
 
@@ -48,6 +49,7 @@
   let db;
 
   function load() {
+    if (LIVE) return seed(); // filled from the database by sync() below
     try {
       const raw = localStorage.getItem(KEY);
       if (raw) return JSON.parse(raw);
@@ -55,9 +57,11 @@
     return seed();
   }
   function save() {
+    if (LIVE) return push();
     try { localStorage.setItem(KEY, JSON.stringify(db)); return true; } catch (e) { return false; } // quota: big spec-sheet files
   }
-  const uid = (p) => p + Math.random().toString(36).slice(2, 9);
+  // Live ids are database ids (uuid)
+  const uid = (p) => (LIVE ? crypto.randomUUID() : p + Math.random().toString(36).slice(2, 9));
   const copy = (o) => (o == null ? o : JSON.parse(JSON.stringify(o)));
   const norm = (s) => String(s || '').normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase();
   const blankN = () => Object.fromEntries(NUTRIENTS.map((x) => [x.key, null]));
@@ -71,7 +75,7 @@
   /* ---------- seed ---------- */
   function seed() {
     const now = Date.now();
-    if (LIVE) return { version: 1, people: [{ id: 'u1', name: 'You', email: '', role: 'admin', title: 'Northwest Frozen', initials: 'Y', color: '#2f6fed' }],
+    if (LIVE) return { version: 1, people: [{ id: ME, name: 'You', email: '', role: 'viewer', title: 'Northwest Frozen', initials: 'Y', color: '#2f6fed' }],
       suppliers: [], ingredients: [], quotes: [], bin: [], seq: 0 };
     const people = [
       { id: 'u1', name: 'Jordan Lee', email: 'jordan@example.com', role: 'admin', title: 'Head of R&D', initials: 'JL', color: '#2f6fed' },
@@ -392,7 +396,8 @@
   function pick(data) { const o = {}; FIELDS.forEach((k) => { if (k in data) o[k] = copy(data[k]); }); return o; }
 
   function createIngredient(data) {
-    db.seq = (db.seq || db.ingredients.length) + 1;
+    db.seq = LIVE ? Math.max(0, ...db.ingredients.map((x) => Number((/^ING-(\d+)$/.exec(x.code) || [])[1]) || 0)) + 1
+      : (db.seq || db.ingredients.length) + 1;
     const now = Date.now();
     const i = Object.assign({
       id: uid('i'), code: 'ING-' + String(db.seq).padStart(4, '0'), name: '', category: '', status: 'draft', itemType: 'food', n: blankN(),
@@ -422,7 +427,7 @@
     i.specSheets.unshift(sh);
     i.currentSheetId = sh.id;
     let stored = false;
-    if (file.dataUrl) {
+    if (file.dataUrl && !LIVE) { // Live keeps the file name only for now
       db.files = db.files || {};
       db.files[sh.id] = file.dataUrl;
       stored = save();
@@ -632,9 +637,68 @@
       localStorage.setItem(PREF + k, JSON.stringify(v));
     } catch (e) { return null; }
   }
-  function reset() { db = seed(); save(); }
+  function reset() { if (LIVE) return; db = seed(); save(); }
   function me() { return copy(person(ME)); }
 
+
+  /* ---------- Live: the database (/api/pantry) ----------
+     shortcut: saving is a synchronous request so the screens' simple synchronous store calls keep working; fine for a
+     prototype. What was last loaded or saved is remembered per item; save() sends only the differences. */
+  const COLLECTIONS = { ingredient: 'ingredients', supplier: 'suppliers', quote: 'quotes', bin: 'bin' };
+  let synced = null; // { ingredient: Map(id -> JSON), ... }
+  // an ingredient also tells the Recipe Builder its supplier and cost per kg (Pantry's costing rule)
+  function forServer(t, x) {
+    if (t !== 'ingredient') return x;
+    const cq = costQuote(supplierRows(x.id));
+    const s = cq && sup(cq.supplierId);
+    return Object.assign({}, x, { vendor: s ? s.name : null, pricePerKg: cq ? perKg(cq, x) : null });
+  }
+  function snapshot() {
+    const out = {};
+    Object.entries(COLLECTIONS).forEach(([t, key]) => { out[t] = new Map(db[key].map((x) => [x.id, JSON.stringify(forServer(t, x))])); });
+    return out;
+  }
+  function push() {
+    if (!synced) return true; // still loading: nothing to compare with yet
+    const now = snapshot(), ops = [];
+    Object.keys(COLLECTIONS).forEach((t) => {
+      now[t].forEach((json, id) => { if (synced[t].get(id) !== json) ops.push({ t, op: 'put', v: JSON.parse(json) }); });
+      synced[t].forEach((_, id) => { if (!now[t].has(id)) ops.push({ t, op: 'del', id }); });
+    });
+    if (!ops.length) return true;
+    const x = new XMLHttpRequest();
+    x.open('POST', '/api/pantry', false);
+    x.setRequestHeader('Content-Type', 'application/json');
+    try { x.send(JSON.stringify({ ops })); } catch (e) { /* offline */ }
+    if (x.status === 401) { location.href = '/login?next=' + encodeURIComponent(location.pathname); return false; }
+    if (x.status >= 200 && x.status < 300) { synced = now; return true; }
+    let msg = 'Not saved: the server did not accept that change.';
+    try { msg = 'Not saved: ' + JSON.parse(x.responseText).error; } catch (e) { if (!x.status) msg = 'Not saved: no connection. Check your internet and try again.'; }
+    // put the screen back to what the database has
+    sync().then(() => { if (window.NL && NL.toast) NL.toast(msg); });
+    return false;
+  }
+  const PAL = ['#2f6fed', '#e8590c', '#0f766e', '#7c5cff', '#c2255c', '#5c940d', '#b08800', '#1971c2'];
+  const initials = (name) => String(name).replace(/@.*/, '').split(/[\s._-]+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('') || '?';
+  async function sync() {
+    let s;
+    try {
+      const res = await fetch('/api/pantry', { cache: 'no-store' });
+      if (res.status === 401) { location.href = '/login?next=' + encodeURIComponent(location.pathname); return; }
+      if (res.status === 403) { noAccess('Pantry'); return; }
+      if (!res.ok) return;
+      s = await res.json();
+    } catch (e) { return; } // offline: keep what we have
+    ME = s.me.id;
+    db = {
+      version: 1, seq: 0, files: db.files,
+      people: s.people.map((p, k) => ({ id: p.id, name: p.name, email: p.email, role: p.role, title: p.role, initials: initials(p.name), color: PAL[k % PAL.length] })),
+      ingredients: s.ingredients, suppliers: s.suppliers, quotes: s.quotes, bin: s.bin,
+    };
+    if (!person(ME)) db.people.push({ id: ME, name: 'You', email: '', role: s.me.role, title: s.me.role, initials: 'Y', color: PAL[0] });
+    synced = snapshot();
+    if (window.NL && NL.app) NL.app.refresh();
+  }
 
   // Live: who may use this app is set on the Members page; without access, show a short message instead of the app
   function noAccess(app) {
@@ -647,8 +711,9 @@
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', show); else show();
   }
   if (LIVE) {
-    fetch('/api/me', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null))
-      .then((me) => { if (me && me.apps && me.apps.pantry === 'none') noAccess('Pantry'); }).catch(() => {});
+    sync();
+    // back to the tab: show what others (or the Recipe Builder, or an import) changed meanwhile
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') sync(); });
   }
 
   window.store = {

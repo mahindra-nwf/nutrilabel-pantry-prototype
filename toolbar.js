@@ -18,7 +18,7 @@
         el('a.brand', { href: '#/all' }, 'Northwest Frozen ', el('small', {}, 'Pantry')),
         el('label.pt-search', {}, el('span.ic', {}, '⌕'), search),
         el('span.spacer'),
-        store.isLive ? el('span.tag', { title: 'Saved in this browser for now' }, 'Live')
+        store.isLive ? el('span.tag', { title: 'Saved for your whole team; the Recipe Builder uses the same ingredients' }, 'Live')
           : el('span.tag', { title: 'Made-up data stored in this browser only' }, 'Playground'),
         el('button.btn.theme-btn', { id: 'themeBtn', title: 'Light / dark', onclick: () => NL.app.toggleTheme() }),
         el('span.pt-me', { title: me.name + ' · ' + me.title }, el('span.avatar', { style: { background: me.color } }, me.initials)));

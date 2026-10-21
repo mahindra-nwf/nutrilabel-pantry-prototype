@@ -94,7 +94,8 @@
       const supplierId = NL.app.state.panel && NL.app.state.panel.supplierId;
       const res = store.addSpecSheet(i.id, Object.assign(f, { supplierId }));
       NL.app.refresh();
-      NL.toast(res.stored || !f.dataUrl ? (f.dataUrl ? 'Spec sheet added.' : 'Spec sheet added (name only — file too big for the prototype).') : 'Spec sheet added (name only — browser storage is full).');
+      NL.toast(store.isLive ? 'Spec sheet added (name only — keeping the file comes later).'
+        : res.stored || !f.dataUrl ? (f.dataUrl ? 'Spec sheet added.' : 'Spec sheet added (name only — file too big for the prototype).') : 'Spec sheet added (name only — browser storage is full).');
     };
     const list = i.specSheets.slice().sort((a, b) => b.uploadedAt - a.uploadedAt);
     const supName = (id) => { const s = id && store.getSupplier(id); return s ? s.name : null; };

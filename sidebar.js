@@ -21,7 +21,7 @@
         item('suppliers', '⛟', 'Suppliers', c.suppliers),
         item('bin', '♻', 'Recycle Bin', c.bin)),
       store.isLive
-        ? el('div.pt-side-foot', {}, el('span.faint', {}, 'Live · saved in this browser for now.'))
+        ? el('div.pt-side-foot', {}, el('span.faint', {}, 'Live · shared with your team and the Recipe Builder.'))
         : el('div.pt-side-foot', {},
           el('span.faint', {}, 'Made-up data, saved in this browser only.'),
           el('button.btn.ghost.sm', { onclick: () => NL.app.resetDemo() }, '↺ Reset demo data')));
