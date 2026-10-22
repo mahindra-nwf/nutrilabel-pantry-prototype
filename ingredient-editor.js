@@ -134,7 +134,8 @@
     renderSpec();
 
     /* --- duplicate name + errors --- */
-    const dupBox = el('div');
+    const dupBox = el('div', { 'aria-live': 'polite' });
+    let shownMatches = null;
     const errBox = el('div.pt-error', { role: 'alert' });
 
     /* --- sections that depend on type / supplier --- */
@@ -174,11 +175,15 @@
       }
       // duplicate name (new ingredients, or a rename onto another name)
       const matches = (!existing || name.value.trim().toLocaleLowerCase() !== existing.name.trim().toLocaleLowerCase()) ? store.findByName(name.value, existing && existing.id) : [];
-      NL.fill(dupBox, matches.length && !dupAck ? el('div.pt-note.warn', {},
-        el('b', {}, 'An ingredient with this name already exists:'),
-        el('ul', {}, matches.map((m) => el('li', {}, m.name + ' (' + m.code + (m.category ? ', ' + m.category : '') + ')'))),
-        el('p', {}, 'Check the existing ingredient before creating another one.'),
-        el('button.btn.sm', { onclick: () => { dupAck = true; sync(); } }, 'I checked; continue with a separate ingredient')) : null);
+      const matchKey = matches.map((m) => m.id + m.match).join('|') + dupAck;
+      if (matchKey !== shownMatches) {
+        shownMatches = matchKey;
+        NL.fill(dupBox, matches.length && !dupAck ? el('div.pt-note.warn', {},
+          el('b', {}, 'Possible duplicate — check these existing items:'),
+          el('ul', {}, matches.map((m) => el('li', {}, m.name + ' (' + m.code + (m.category ? ', ' + m.category : '') + ') · ' + m.match))),
+          el('p', {}, 'If it is the same item, use the existing record instead of creating another.'),
+          el('button.btn.sm', { onclick: () => { dupAck = true; sync(); } }, 'I checked; continue with a separate ingredient')) : null);
+      }
       saveBtn.disabled = !name.value.trim() || (matches.length > 0 && !dupAck);
     }
     name.addEventListener('input', () => { dupAck = false; sync(); });
@@ -243,10 +248,10 @@
 
     const saveBtn = el('button.btn.primary', { onclick: doSave }, existing ? 'Save changes' : 'Add ' + noun);
     const body = el('div.pt-form', {},
-      dupBox,
       el('div.pt-form-row', {},
         el('div.pt-form-col', {},
           field('Name *', name),
+          dupBox,
           el('div.pt-form-row', {}, field('Main category', cat.node, 'Visible to the team. Use a private custom category below for your own grouping.'), field('Internal product number', internal))),
         el('div.pt-form-col.narrow', {}, el('span.pt-label', {}, 'Spec sheet'), specBox)),
       store.supportsCategories() ? [el('h3.pt-form-h', {}, 'Custom categories'),

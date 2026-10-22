@@ -417,11 +417,36 @@
   function uoms() { return distinct([...STANDARD_UOMS, ...db.ingredients.map((i) => i.uom), ...db.quotes.map((q) => q.uom)]); }
   function packConfigs() { return distinct([...db.ingredients.map((i) => i.packConfig), ...db.quotes.map((q) => q.packConfig)]); }
 
-  // same rule as Raw Materials: trimmed, case-insensitive exact name
+  // Surface likely duplicates without treating different ingredients as definitely the same.
   function findByName(name, exceptId) {
-    const k = String(name || '').trim().toLocaleLowerCase();
-    if (!k) return [];
-    return db.ingredients.filter((i) => i.id !== exceptId && i.name.trim().toLocaleLowerCase() === k).map((i) => ({ id: i.id, name: i.name, code: i.code, category: i.category }));
+    const key = (s) => norm(s).replace(/(\p{L})(\p{N})/gu, '$1 $2').replace(/(\p{N})(\p{L})/gu, '$1 $2')
+      .replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+    const query = key(name);
+    if (!query) return [];
+    const words = query.split(' ');
+    const numbers = (parts) => parts.filter((w) => /\p{N}/u.test(w)).sort().join(' ');
+    const distance = (a, b) => {
+      let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+      for (let i = 0; i < a.length; i++) {
+        const next = [i + 1];
+        for (let j = 0; j < b.length; j++) next.push(Math.min(next[j] + 1, prev[j + 1] + 1, prev[j] + (a[i] === b[j] ? 0 : 1)));
+        prev = next;
+      }
+      return prev[b.length];
+    };
+    return db.ingredients.flatMap((i) => {
+      if (i.id === exceptId) return [];
+      const candidate = key(i.name);
+      const other = candidate.split(' ');
+      if (numbers(words) !== numbers(other)) return [];
+      const same = candidate === query;
+      const reordered = words.length > 1 && words.length === other.length && [...words].sort().join(' ') === [...other].sort().join(' ');
+      const [short, long] = words.length < other.length ? [words, other] : [other, words];
+      const addedWord = short.length >= 2 && long.length === short.length + 1 && short.every((w) => long.includes(w));
+      const typo = !same && !reordered && !addedWord && query.length >= 6 && Math.abs(query.length - candidate.length) <= 2 && distance(query, candidate) <= (query.length < 15 ? 1 : 2);
+      if (!same && !reordered && !addedWord && !typo) return [];
+      return [{ id: i.id, name: i.name, code: i.code, category: i.category, match: same ? 'Same name' : 'Similar name', rank: same ? 0 : reordered ? 1 : typo ? 2 : 3 }];
+    }).sort((a, b) => a.rank - b.rank || a.name.localeCompare(b.name)).slice(0, 5);
   }
 
   const FIELDS = ['name', 'category', 'categoryIds', 'itemType', 'n', 'allergens', 'allergenStatus', 'allergenSources', 'statement', 'uom', 'packQty', 'packConfig',
