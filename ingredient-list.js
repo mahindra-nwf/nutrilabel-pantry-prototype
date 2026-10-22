@@ -6,6 +6,7 @@
     review: 'Unknown nutrition values, unverified allergens, missing statements, no supplier, no price or a price older than 6 months.',
     drafts: 'Added but not approved yet. The Recipe Builder labels these “draft”.',
   };
+  const resetFilters = () => NL.app.go({ category: '', supplierId: '', allergens: [], query: '' }, { replace: true });
 
   function rowsOf(items, state) {
     const rows = [];
@@ -32,15 +33,36 @@
     const sel = (key, all, opts) => el('select.pt-select' + (state[key] ? '.on' : ''), {
       'aria-label': all, onchange: (e) => NL.app.go({ [key]: e.target.value }, { replace: true }),
     }, el('option', { value: '' }, all), opts.map(([v, l]) => el('option', { value: v, selected: state[key] === v }, l)));
-    const any = state.category || state.supplierId || state.allergen || state.query;
+    const selected = state.allergens || [];
+    const allergenFilter = el('button.pt-select' + (selected.length ? '.on' : ''), {
+      type: 'button', 'aria-haspopup': 'dialog', onclick: () => {
+        const boxes = store.ALLERGENS.map((a) => {
+          const input = el('input', { type: 'checkbox', checked: selected.includes(a) });
+          return { a, input, node: el('label.pt-check', {}, input, a) };
+        });
+        const m = NL.modal('Filter by allergens', el('div.pt-al-grid', {}, boxes.map((x) => x.node)), [
+          el('button.btn', { onclick: () => m.close() }, 'Cancel'),
+          el('button.btn.primary', { onclick: () => {
+            NL.app.go({ allergens: boxes.filter((x) => x.input.checked).map((x) => x.a) }, { replace: true });
+            m.close();
+          } }, 'Apply filters'),
+        ], { cls: 'small' });
+      },
+    }, selected.length === 0 ? 'All allergens' : selected.length === 1 ? selected[0] : selected.length + ' allergens');
+    const any = state.category || state.supplierId || selected.length || state.query;
     return el('div.pt-filters', {},
       sel('category', 'All categories', [
         ...store.categories().map((c) => [c, c + ' · Main']),
         ...store.customCategories().map((c) => [c.id, c.name + (c.visibility === 'private' ? ' · Private' : ' · Shared')]),
       ]),
       sel('supplierId', 'All suppliers', store.listSuppliers().map((s) => [s.id, s.name])),
-      sel('allergen', 'All allergens', store.ALLERGENS.map((a) => [a, a])),
-      any ? el('button.btn.ghost.sm', { onclick: () => NL.app.go({ category: '', supplierId: '', allergen: '', query: '' }, { replace: true }) }, '✕ Clear filters') : null);
+      allergenFilter,
+      state.view === 'review' ? el('button.btn', {
+        'aria-pressed': state.sort.key === 'review' ? 'true' : 'false',
+        title: 'Click to sort by review count; click again to reverse',
+        onclick: () => NL.app.go({ sort: { key: 'review', dir: state.sort.key === 'review' && state.sort.dir === 'desc' ? 'asc' : 'desc' } }, { replace: true }),
+      }, state.sort.key === 'review' ? 'Review count ' + (state.sort.dir === 'desc' ? '↓' : '↑') : 'Sort by review count') : null,
+      el('button.btn.ghost.sm', { disabled: !any, onclick: resetFilters }, 'Reset filters'));
   }
 
   function th(state, key, label, cls) {
@@ -102,7 +124,7 @@
   function render(state) {
     const main = document.getElementById('main');
     const total = store.listIngredients({ view: state.view });
-    const items = store.listIngredients({ view: state.view, query: state.query, category: state.category, supplierId: state.supplierId, allergen: state.allergen });
+    const items = store.listIngredients({ view: state.view, query: state.query, category: state.category, supplierId: state.supplierId, allergens: state.allergens });
     const rows = rowsOf(items, state);
     let lastId = null, stripe = false;
 
@@ -115,7 +137,7 @@
       : el('div.pt-empty', {},
           el('div.pt-empty-ic', {}, total.length ? '⌕' : state.view === 'review' ? '✓' : '▤'),
           el('p', {}, total.length ? 'No ingredients match the current filters.' : state.view === 'review' ? 'Nothing needs review. Nice.' : 'No ingredients here yet.'),
-          total.length ? el('button.btn', { onclick: () => NL.app.go({ category: '', supplierId: '', allergen: '', query: '' }) }, 'Clear filters')
+          total.length ? el('button.btn', { onclick: resetFilters }, 'Reset filters')
             : NL.app.newLabel() ? el('button.btn.primary', { onclick: () => NL.app.newIngredient() }, '＋ ' + NL.app.newLabel()) : null);
 
     NL.fill(main,
@@ -125,11 +147,6 @@
           el('div.muted', {}, items.length + ' of ' + total.length + ' ingredient' + (total.length === 1 ? '' : 's') + (rows.length !== items.length ? ' · ' + rows.length + ' supplier rows' : '')),
           SUBS[state.view] ? el('div.faint.pt-head-sub', {}, SUBS[state.view]) : null),
         el('span.spacer'),
-        state.view === 'review' ? el('button.btn', {
-          'aria-pressed': state.sort.key === 'review' ? 'true' : 'false',
-          title: 'Click to sort by review count; click again to reverse',
-          onclick: () => NL.app.go({ sort: { key: 'review', dir: state.sort.key === 'review' && state.sort.dir === 'desc' ? 'asc' : 'desc' } }, { replace: true }),
-        }, state.sort.key === 'review' ? 'Review count ' + (state.sort.dir === 'desc' ? '↓' : '↑') : 'Sort by review count') : null,
         NL.app.newLabel() ? el('button.btn.primary', { onclick: () => NL.app.newIngredient() }, '＋ ' + NL.app.newLabel()) : null),
       filters(state),
       body);

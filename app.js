@@ -7,7 +7,7 @@
   const PANEL_MIN = 320, PANEL_DEFAULT = 580;
 
   const state = {
-    view: 'all', query: '', category: '', supplierId: '', allergen: '',
+    view: 'all', query: '', category: '', supplierId: '', allergens: [],
     sort: { key: 'name', dir: 'asc' },
     panel: null,            // { ingredientId, supplierId|null }
     panelWidth: store.pref('panelWidth') || PANEL_DEFAULT,
@@ -143,7 +143,7 @@
   async function resetDemo() {
     if (!(await NL.confirm('Reset demo data?', 'Put back the original sample ingredients, suppliers and prices? Everything you added or changed in this browser is lost.', { ok: 'Reset', danger: true }))) return;
     store.reset();
-    Object.assign(state, { query: '', category: '', supplierId: '', allergen: '', panel: null });
+    Object.assign(state, { query: '', category: '', supplierId: '', allergens: [], panel: null });
     go({ view: 'all' });
     NL.toast('Demo data reset.');
   }
