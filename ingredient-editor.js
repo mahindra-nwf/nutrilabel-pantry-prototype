@@ -249,7 +249,7 @@
           field('Name *', name),
           el('div.pt-form-row', {}, field('Main category', cat.node, 'Visible to the team. Use a private custom category below for your own grouping.'), field('Internal product number', internal))),
         el('div.pt-form-col.narrow', {}, el('span.pt-label', {}, 'Spec sheet'), specBox)),
-      el('h3.pt-form-h', {}, 'Custom categories'),
+      store.supportsCategories() ? [el('h3.pt-form-h', {}, 'Custom categories'),
       el('p.pt-hint', {}, 'Choose any number. Private categories are only visible to you. Changes to categories save immediately.'),
       categoryBox,
       el('div.pt-form-row', {}, field('New category', categoryName), field('Visibility', categoryVisibility),
@@ -258,7 +258,7 @@
           try { const created = store.createCategory(categoryName.value, categoryVisibility.value); selectedCategories.add(created.id); categoryName.value = ''; renderCategories(); NL.toast('Category created.'); }
           catch (e) { categoryError.textContent = e.message; }
         } }, 'Create category')),
-      categoryError,
+      categoryError] : null,
       types.length > 1 ? [el('h3.pt-form-h', {}, 'Item type'), typeRadios] : null, // one choice (packaging): nothing to pick
       types.length > 1 ? null : el('div', { hidden: true }, typeRadios),
       el('h3.pt-form-h', {}, 'Supplier & price'),

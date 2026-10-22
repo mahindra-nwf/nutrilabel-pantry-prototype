@@ -76,7 +76,7 @@
   function seed() {
     const now = Date.now();
     if (LIVE) return { version: 1, people: [{ id: ME, name: 'You', email: '', role: 'viewer', title: 'Northwest Frozen', initials: 'Y', color: '#2f6fed' }],
-      suppliers: [], ingredients: [], categories: [], quotes: [], bin: [], seq: 0 };
+      suppliers: [], ingredients: [], categories: [], categoryFeature: false, quotes: [], bin: [], seq: 0 };
     const people = [
       { id: 'u1', name: 'Jordan Lee', email: 'jordan@example.com', role: 'admin', title: 'Head of R&D', initials: 'JL', color: '#2f6fed' },
       { id: 'u2', name: 'Ana Ruiz', email: 'ana@example.com', role: 'editor', title: 'Sous chef', initials: 'AR', color: '#e8590c' },
@@ -382,8 +382,10 @@
   function getIngredient(id) { const i = ing(id); return i ? deco(i) : null; }
   const distinct = (vals) => [...new Set(vals.filter((v) => v && String(v).trim()))].sort((a, b) => a.localeCompare(b));
   function categories() { return distinct(db.ingredients.map((i) => i.category)); }
+  function supportsCategories() { return !LIVE || !!db.categoryFeature; }
   function customCategories() { return copy(db.categories).sort((a, b) => a.name.localeCompare(b.name)); }
   function createCategory(name, visibility) {
+    if (!supportsCategories()) throw new Error('Categories are not available on this app version yet.');
     name = String(name || '').trim();
     if (!name || name.length > 100) throw new Error('Enter a category name (up to 100 characters).');
     if (!['private', 'shared'].includes(visibility)) throw new Error('Choose private or shared.');
@@ -735,7 +737,7 @@
     db = {
       version: 1, seq: 0, files: db.files,
       people: s.people.map((p, k) => ({ id: p.id, name: p.name, email: p.email, role: p.role, title: p.role, initials: initials(p.name), color: PAL[k % PAL.length] })),
-      ingredients: s.ingredients, categories: s.categories || [], suppliers: s.suppliers, quotes: s.quotes, bin: s.bin,
+      ingredients: s.ingredients, categories: s.categories || [], categoryFeature: Array.isArray(s.categories), suppliers: s.suppliers, quotes: s.quotes, bin: s.bin,
     };
     if (!person(ME)) db.people.push({ id: ME, name: 'You', email: '', role: s.me.role, title: s.me.role, initials: 'Y', color: PAL[0] });
     synced = snapshot();
@@ -762,7 +764,7 @@
     /** Live (clean) or Playground (demo data); see LIVE at the top */
     isLive: LIVE,
     NUTRIENTS, ALLERGENS, TREE_NUTS, WEIGHT_UOMS, UNIT_TO_G, SUPPLIER_CATEGORIES, ITEM_TYPES, BIN_HOURS,
-    me, listIngredients, counts, getIngredient, categories, customCategories, createCategory, updateCategory, deleteCategory, uoms, packConfigs, findByName,
+    me, listIngredients, counts, getIngredient, categories, supportsCategories, customCategories, createCategory, updateCategory, deleteCategory, uoms, packConfigs, findByName,
     createIngredient, updateIngredient, setStatus,
     addSpecSheet, sheetFile, setCurrentSheet, recycleSpecSheet,
     listSuppliers, getSupplier, saveSupplier, recycleSupplier,
