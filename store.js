@@ -494,7 +494,10 @@
     touch(i); save();
     return { sheet: copy(sh), stored };
   }
-  function sheetFile(sheetId) { return (db.files && db.files[sheetId]) || null; }
+  function sheetFile(sheetId) {
+    const sheet = db.ingredients.flatMap((i) => i.specSheets || []).find((s) => s.id === sheetId);
+    return (sheet && sheet.url) || (db.files && db.files[sheetId]) || null;
+  }
   function setCurrentSheet(ingId, sheetId) { const i = ing(ingId); if (!i) return; i.currentSheetId = sheetId; touch(i); save(); }
 
   /* ---------- suppliers ---------- */
