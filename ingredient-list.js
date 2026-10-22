@@ -34,7 +34,10 @@
     }, el('option', { value: '' }, all), opts.map(([v, l]) => el('option', { value: v, selected: state[key] === v }, l)));
     const any = state.category || state.supplierId || state.allergen || state.query;
     return el('div.pt-filters', {},
-      sel('category', 'All categories', store.categories().map((c) => [c, c])),
+      sel('category', 'All categories', [
+        ...store.categories().map((c) => [c, c + ' · Main']),
+        ...store.customCategories().map((c) => [c.id, c.name + (c.visibility === 'private' ? ' · Private' : ' · Shared')]),
+      ]),
       sel('supplierId', 'All suppliers', store.listSuppliers().map((s) => [s.id, s.name])),
       sel('allergen', 'All allergens', store.ALLERGENS.map((a) => [a, a])),
       any ? el('button.btn.ghost.sm', { onclick: () => NL.app.go({ category: '', supplierId: '', allergen: '', query: '' }, { replace: true }) }, '✕ Clear filters') : null);

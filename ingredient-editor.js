@@ -21,6 +21,43 @@
     /* --- basics --- */
     const name = el('input.txt', { value: i.name, placeholder: 'e.g. Chicken Breast, raw', maxLength: 200 });
     const cat = NL.combo(i.category, store.categories(), { placeholder: 'Select or type new…' });
+    const selectedCategories = new Set(i.categoryIds || []);
+    const categoryBox = el('div');
+    const categoryName = el('input.txt', { maxLength: 100, placeholder: 'New category name', 'aria-label': 'New category name' });
+    const categoryVisibility = el('select.txt', { 'aria-label': 'Who can see this category' },
+      el('option', { value: 'private' }, 'Private — only me'), el('option', { value: 'shared' }, 'Shared — everyone in Pantry'));
+    const categoryError = el('div.pt-error', { role: 'alert' });
+    function renderCategories() {
+      const items = store.customCategories();
+      NL.fill(categoryBox, items.length ? items.map((c) => el('div.pt-category-choice', {},
+        el('label.pt-check', {}, el('input', { type: 'checkbox', checked: selectedCategories.has(c.id), onchange: (e) => {
+          e.target.checked ? selectedCategories.add(c.id) : selectedCategories.delete(c.id);
+        } }), c.name + (c.visibility === 'private' ? ' · Private' : ' · Shared')),
+        c.ownerId === store.me().id ? el('button.btn.ghost.sm', { type: 'button', onclick: () => editCategory(c) }, 'Edit') : null))
+        : el('p.faint', {}, 'No custom categories yet.'));
+    }
+    async function editCategory(c) {
+      const editName = el('input.txt', { value: c.name, maxLength: 100 });
+      const editVisibility = el('select.txt', {},
+        el('option', { value: 'private', selected: c.visibility === 'private' }, 'Private — only me'),
+        el('option', { value: 'shared', selected: c.visibility === 'shared' }, 'Shared — everyone in Pantry'));
+      const error = el('div.pt-error', { role: 'alert' });
+      const dialog = NL.modal('Edit category', el('div.pt-form', {}, field('Name', editName), field('Visibility', editVisibility), error), [
+        el('button.btn.danger-txt', { onclick: async () => {
+          if (!await NL.confirm('Delete category?', 'Remove “' + c.name + '” from all ingredients?', { ok: 'Delete category', danger: true })) return;
+          try { store.deleteCategory(c.id); selectedCategories.delete(c.id); dialog.close(); renderCategories(); NL.toast('Category deleted.'); }
+          catch (e) { error.textContent = e.message; }
+        } }, 'Delete'),
+        el('button.btn', { onclick: () => dialog.close() }, 'Cancel'),
+        el('button.btn.primary', { onclick: async () => {
+          if (c.visibility === 'private' && editVisibility.value === 'shared' &&
+            !await NL.confirm('Share this category?', 'Everyone with Pantry access will see this category and the ingredients you put in it.', { ok: 'Share category' })) return;
+          try { store.updateCategory(c.id, { name: editName.value, visibility: editVisibility.value }); dialog.close(); renderCategories(); NL.toast('Category updated.'); }
+          catch (e) { error.textContent = e.message; }
+        } }, 'Save category'),
+      ], { cls: 'small' });
+    }
+    renderCategories();
     const internal = el('input.txt', { value: i.internalCode || '', placeholder: 'Your own tracking code, if used' });
     const typeRadios = el('div.pt-radios', {}, types.map((t) => el('label.pt-radio', {},
       el('input', { type: 'radio', name: 'itemType', value: t.key, checked: i.itemType === t.key, onchange: () => sync() }),
@@ -178,7 +215,7 @@
       }
 
       const data = {
-        name: name.value, category: cat.input.value.trim(), itemType: t, internalCode: internal.value.trim(),
+        name: name.value, category: cat.input.value.trim(), categoryIds: [...selectedCategories], itemType: t, internalCode: internal.value.trim(),
         uom: uom.input.value.trim(), packQty: qtyV, packConfig: cfg.input.value.trim(),
         netWeightG: t === 'food' && !store.WEIGHT_UOMS.includes(uom.input.value.trim()) ? NL.readNum(netW.value) : null,
         grossWeightG: t !== 'food' ? gross : null,
@@ -210,8 +247,18 @@
       el('div.pt-form-row', {},
         el('div.pt-form-col', {},
           field('Name *', name),
-          el('div.pt-form-row', {}, field('Category', cat.node), field('Internal product number', internal))),
+          el('div.pt-form-row', {}, field('Main category', cat.node, 'Visible to the team. Use a private custom category below for your own grouping.'), field('Internal product number', internal))),
         el('div.pt-form-col.narrow', {}, el('span.pt-label', {}, 'Spec sheet'), specBox)),
+      el('h3.pt-form-h', {}, 'Custom categories'),
+      el('p.pt-hint', {}, 'Choose any number. Private categories are only visible to you. Changes to categories save immediately.'),
+      categoryBox,
+      el('div.pt-form-row', {}, field('New category', categoryName), field('Visibility', categoryVisibility),
+        el('button.btn', { type: 'button', onclick: () => {
+          categoryError.textContent = '';
+          try { const created = store.createCategory(categoryName.value, categoryVisibility.value); selectedCategories.add(created.id); categoryName.value = ''; renderCategories(); NL.toast('Category created.'); }
+          catch (e) { categoryError.textContent = e.message; }
+        } }, 'Create category')),
+      categoryError,
       types.length > 1 ? [el('h3.pt-form-h', {}, 'Item type'), typeRadios] : null, // one choice (packaging): nothing to pick
       types.length > 1 ? null : el('div', { hidden: true }, typeRadios),
       el('h3.pt-form-h', {}, 'Supplier & price'),

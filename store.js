@@ -76,7 +76,7 @@
   function seed() {
     const now = Date.now();
     if (LIVE) return { version: 1, people: [{ id: ME, name: 'You', email: '', role: 'viewer', title: 'Northwest Frozen', initials: 'Y', color: '#2f6fed' }],
-      suppliers: [], ingredients: [], quotes: [], bin: [], seq: 0 };
+      suppliers: [], ingredients: [], categories: [], quotes: [], bin: [], seq: 0 };
     const people = [
       { id: 'u1', name: 'Jordan Lee', email: 'jordan@example.com', role: 'admin', title: 'Head of R&D', initials: 'JL', color: '#2f6fed' },
       { id: 'u2', name: 'Ana Ruiz', email: 'ana@example.com', role: 'editor', title: 'Sous chef', initials: 'AR', color: '#e8590c' },
@@ -291,10 +291,11 @@
       { id: 'b1', kind: 'ingredient', name: gone.name, deletedAt: now - 69 * H, deletedBy: 'u2', expiresAt: now - 69 * H + BIN_HOURS * H, payload: { ingredient: gone, quotes: [goneQ] } },
     ];
 
-    return { version: 1, people, suppliers, ingredients, quotes, bin, seq };
+    return { version: 1, people, suppliers, ingredients, categories: [], quotes, bin, seq };
   }
 
   db = load();
+  db.categories = db.categories || [];
 
   /* ---------- helpers that build what screens see ---------- */
   function supplierRows(ingId) {
@@ -363,7 +364,7 @@
       if (f.view === 'packaging' && i.itemType !== 'packaging') return false;
       if (f.view === 'review' && !i.issues.length) return false;
       if (f.view === 'drafts' && i.status !== 'draft') return false;
-      if (f.category && i.category !== f.category) return false;
+      if (f.category && i.category !== f.category && !(i.categoryIds || []).includes(f.category)) return false;
       if (f.allergen && !i.allergens.includes(f.allergen)) return false;
       if (f.supplierId && !i.sources.some((r) => r.supplierId === f.supplierId)) return false;
       if (q && ![i.name, i.code, i.internalCode, ...i.sources.map((r) => r.quote.sku)].some((t) => norm(t).includes(q))) return false;
@@ -381,6 +382,36 @@
   function getIngredient(id) { const i = ing(id); return i ? deco(i) : null; }
   const distinct = (vals) => [...new Set(vals.filter((v) => v && String(v).trim()))].sort((a, b) => a.localeCompare(b));
   function categories() { return distinct(db.ingredients.map((i) => i.category)); }
+  function customCategories() { return copy(db.categories).sort((a, b) => a.name.localeCompare(b.name)); }
+  function createCategory(name, visibility) {
+    name = String(name || '').trim();
+    if (!name || name.length > 100) throw new Error('Enter a category name (up to 100 characters).');
+    if (!['private', 'shared'].includes(visibility)) throw new Error('Choose private or shared.');
+    if (db.categories.some((c) => norm(c.name) === norm(name) && c.visibility === visibility && (visibility === 'shared' || c.ownerId === ME)))
+      throw new Error('That category already exists.');
+    const c = { id: uid('c'), name, visibility, ownerId: ME };
+    db.categories.push(c);
+    if (!save()) throw new Error('Could not save category.');
+    return copy(c);
+  }
+  function updateCategory(id, data) {
+    const c = db.categories.find((x) => x.id === id);
+    if (!c || c.ownerId !== ME) throw new Error('Only the category creator can change it.');
+    const name = String(data.name || '').trim();
+    if (!name || name.length > 100) throw new Error('Enter a category name (up to 100 characters).');
+    if (!['private', 'shared'].includes(data.visibility)) throw new Error('Choose private or shared.');
+    if (db.categories.some((x) => x.id !== id && norm(x.name) === norm(name) && x.visibility === data.visibility && (data.visibility === 'shared' || x.ownerId === ME)))
+      throw new Error('That category already exists.');
+    c.name = name; c.visibility = data.visibility;
+    if (!save()) throw new Error('Could not save category.');
+  }
+  function deleteCategory(id) {
+    const c = db.categories.find((x) => x.id === id);
+    if (!c || c.ownerId !== ME) throw new Error('Only the category creator can delete it.');
+    db.categories = db.categories.filter((x) => x.id !== id);
+    db.ingredients.forEach((i) => { i.categoryIds = (i.categoryIds || []).filter((x) => x !== id); });
+    if (!save()) throw new Error('Could not delete category.');
+  }
   function uoms() { return distinct([...STANDARD_UOMS, ...db.ingredients.map((i) => i.uom), ...db.quotes.map((q) => q.uom)]); }
   function packConfigs() { return distinct([...db.ingredients.map((i) => i.packConfig), ...db.quotes.map((q) => q.packConfig)]); }
 
@@ -391,7 +422,7 @@
     return db.ingredients.filter((i) => i.id !== exceptId && i.name.trim().toLocaleLowerCase() === k).map((i) => ({ id: i.id, name: i.name, code: i.code, category: i.category }));
   }
 
-  const FIELDS = ['name', 'category', 'itemType', 'n', 'allergens', 'allergenStatus', 'allergenSources', 'statement', 'uom', 'packQty', 'packConfig',
+  const FIELDS = ['name', 'category', 'categoryIds', 'itemType', 'n', 'allergens', 'allergenStatus', 'allergenSources', 'statement', 'uom', 'packQty', 'packConfig',
     'netWeightG', 'grossWeightG', 'internalCode', 'qualityNotes', 'teaser'];
   function pick(data) { const o = {}; FIELDS.forEach((k) => { if (k in data) o[k] = copy(data[k]); }); return o; }
 
@@ -400,7 +431,7 @@
       : (db.seq || db.ingredients.length) + 1;
     const now = Date.now();
     const i = Object.assign({
-      id: uid('i'), code: 'ING-' + String(db.seq).padStart(4, '0'), name: '', category: '', status: 'draft', itemType: 'food', n: blankN(),
+      id: uid('i'), code: 'ING-' + String(db.seq).padStart(4, '0'), name: '', category: '', categoryIds: [], status: 'draft', itemType: 'food', n: blankN(),
       allergens: [], allergenStatus: 'not_declared', allergenSources: {}, statement: '', uom: '', packQty: null, packConfig: '',
       netWeightG: null, grossWeightG: null, internalCode: '', qualityNotes: '', teaser: '',
       specSheets: [], currentSheetId: null, preferredSupplierId: null, createdAt: now, createdBy: ME, updatedAt: now, updatedBy: ME,
@@ -644,7 +675,7 @@
   /* ---------- Live: the database (/api/pantry) ----------
      shortcut: saving is a synchronous request so the screens' simple synchronous store calls keep working; fine for a
      prototype. What was last loaded or saved is remembered per item; save() sends only the differences. */
-  const COLLECTIONS = { ingredient: 'ingredients', supplier: 'suppliers', quote: 'quotes', bin: 'bin' };
+  const COLLECTIONS = { category: 'categories', ingredient: 'ingredients', supplier: 'suppliers', quote: 'quotes', bin: 'bin' };
   let synced = null; // { ingredient: Map(id -> JSON), ... }
   // an ingredient also tells the Recipe Builder its supplier and cost per kg (Pantry's costing rule)
   function forServer(t, x) {
@@ -662,7 +693,18 @@
     if (!synced) return true; // still loading: nothing to compare with yet
     const now = snapshot(), ops = [];
     Object.keys(COLLECTIONS).forEach((t) => {
-      now[t].forEach((json, id) => { if (synced[t].get(id) !== json) ops.push({ t, op: 'put', v: JSON.parse(json) }); });
+      now[t].forEach((json, id) => {
+        if (synced[t].get(id) === json) return;
+        const v = JSON.parse(json);
+        if (t === 'ingredient') {
+          const before = new Set(synced[t].has(id) ? JSON.parse(synced[t].get(id)).categoryIds || [] : []);
+          const after = new Set(v.categoryIds || []);
+          v.categoryAddIds = [...after].filter((x) => !before.has(x));
+          v.categoryRemoveIds = [...before].filter((x) => !after.has(x));
+          delete v.categoryIds; // never put private assignments in the shared ingredient row
+        }
+        ops.push({ t, op: 'put', v });
+      });
       synced[t].forEach((_, id) => { if (!now[t].has(id)) ops.push({ t, op: 'del', id }); });
     });
     if (!ops.length) return true;
@@ -693,7 +735,7 @@
     db = {
       version: 1, seq: 0, files: db.files,
       people: s.people.map((p, k) => ({ id: p.id, name: p.name, email: p.email, role: p.role, title: p.role, initials: initials(p.name), color: PAL[k % PAL.length] })),
-      ingredients: s.ingredients, suppliers: s.suppliers, quotes: s.quotes, bin: s.bin,
+      ingredients: s.ingredients, categories: s.categories || [], suppliers: s.suppliers, quotes: s.quotes, bin: s.bin,
     };
     if (!person(ME)) db.people.push({ id: ME, name: 'You', email: '', role: s.me.role, title: s.me.role, initials: 'Y', color: PAL[0] });
     synced = snapshot();
@@ -720,7 +762,7 @@
     /** Live (clean) or Playground (demo data); see LIVE at the top */
     isLive: LIVE,
     NUTRIENTS, ALLERGENS, TREE_NUTS, WEIGHT_UOMS, UNIT_TO_G, SUPPLIER_CATEGORIES, ITEM_TYPES, BIN_HOURS,
-    me, listIngredients, counts, getIngredient, categories, uoms, packConfigs, findByName,
+    me, listIngredients, counts, getIngredient, categories, customCategories, createCategory, updateCategory, deleteCategory, uoms, packConfigs, findByName,
     createIngredient, updateIngredient, setStatus,
     addSpecSheet, sheetFile, setCurrentSheet, recycleSpecSheet,
     listSuppliers, getSupplier, saveSupplier, recycleSupplier,

@@ -233,6 +233,9 @@
           el('button.pt-x', { title: 'Close details', 'aria-label': 'Close details', onclick: () => NL.app.closePanel() }, '✕')),
         el('div.pt-chips', {},
           i.category ? el('span.pt-chip', {}, i.category) : null,
+          store.customCategories().filter((c) => (i.categoryIds || []).includes(c.id)).map((c) =>
+            el('span.pt-chip', { title: c.visibility === 'private' ? 'Private — only you can see this category' : 'Shared with Pantry members' },
+              c.name + (c.visibility === 'private' ? ' · Private' : ''))),
           el('span.pt-chip', {}, store.ITEM_TYPES.find((t) => t.key === i.itemType).label),
           el('span.pt-chip.' + (i.status === 'draft' ? 'draft' : 'ok'), {}, i.status),
           approve),
