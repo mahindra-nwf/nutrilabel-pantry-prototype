@@ -345,15 +345,19 @@
     const o = copy(i);
     o.sources = rows;
     o.costQuote = costQuote(rows);
-    o.issues = reviewIssues(i, rows);
+    o.issues = i.reviewedAt ? [] : reviewIssues(i, rows);
     o.updatedByPerson = copy(person(i.updatedBy));
+    o.reviewedByPerson = i.reviewedBy ? copy(person(i.reviewedBy)) : null;
     o.currentSheet = copy(i.specSheets.find((s) => s.id === i.currentSheetId) || null);
     o.specSheets = o.specSheets.map((s) => { delete s.dataUrl; s.hasFile = !!(db.files && db.files[s.id]); return s; });
     if (o.currentSheet) { delete o.currentSheet.dataUrl; o.currentSheet.hasFile = !!(db.files && db.files[o.currentSheet.id]); }
     return o;
   }
 
-  function touch(i) { i.updatedAt = Date.now(); i.updatedBy = ME; }
+  function touch(i) {
+    i.updatedAt = Date.now(); i.updatedBy = ME;
+    i.reviewedAt = null; i.reviewedBy = null; i.reviewerName = null;
+  }
 
   /* ---------- ingredients ---------- */
   function listIngredients(f) {
@@ -477,6 +481,21 @@
   }
   // NLv4 status column: draft → approved (Recipe Builder labels drafts)
   function setStatus(id, status) { const i = ing(id); if (!i) return; i.status = status; touch(i); save(); }
+  async function reviewIngredient(id) {
+    const i = ing(id); if (!i) throw new Error('Ingredient not found.');
+    if (LIVE) {
+      const res = await fetch('/api/pantry/reviews', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ingredientId: id }) });
+      const out = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(out.error || 'Could not save the review.');
+      await sync();
+      return;
+    }
+    const at = Date.now(), reviewer = person(ME);
+    i.status = 'approved'; touch(i);
+    i.reviewedAt = at; i.reviewedBy = ME; i.reviewerName = reviewer ? reviewer.name : 'You';
+    i.reviewHistory = [{ id: uid('rv'), reviewedAt: at, reviewedBy: ME, reviewerName: i.reviewerName }, ...(i.reviewHistory || [])];
+    save();
+  }
 
   /* ---------- spec sheets ---------- */
   async function addSpecSheet(ingId, file) {
@@ -812,7 +831,7 @@
     isLive: LIVE,
     NUTRIENTS, ALLERGENS, TREE_NUTS, WEIGHT_UOMS, UNIT_TO_G, SUPPLIER_CATEGORIES, ITEM_TYPES, BIN_HOURS,
     me, listIngredients, counts, getIngredient, categories, supportsCategories, customCategories, createCategory, updateCategory, deleteCategory, uoms, packConfigs, findByName,
-    createIngredient, updateIngredient, setStatus,
+    createIngredient, updateIngredient, setStatus, reviewIngredient,
     addSpecSheet, sheetFile, setCurrentSheet, recycleSpecSheet,
     listSuppliers, getSupplier, saveSupplier, recycleSupplier,
     quoteHistory, getQuote, saveQuote, setPreferred, recycleQuote, recycleSupplierRow, recycleIngredient,
