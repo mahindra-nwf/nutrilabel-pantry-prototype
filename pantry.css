@@ -58,6 +58,7 @@ body.resizing { cursor: col-resize; user-select: none; }
 .pt-table tbody tr { cursor: pointer; }
 .pt-table tbody tr.stripe { background: var(--subtle); }
 .pt-table tbody tr:hover { background: var(--hover); }
+.pt-table tbody tr:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; scroll-margin-top: 36px; }
 .pt-table tbody tr.active { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
 .pt-table .nr { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .pt-name { min-width: 200px; }
