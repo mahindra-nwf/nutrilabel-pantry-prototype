@@ -145,7 +145,6 @@
           title: 'Click to sort by review count; click again to reverse',
           onclick: () => NL.app.go({ sort: { key: 'review', dir: state.sort.key === 'review' && state.sort.dir === 'desc' ? 'asc' : 'desc' } }, { replace: true }),
         }, state.sort.key === 'review' ? 'Review count ' + (state.sort.dir === 'desc' ? '↓' : '↑') : 'Sort by review count') : null,
-        el('button.btn', { onclick: () => NL.duplicates.open() }, '⧉ Check for duplicates'),
         NL.app.newLabel() ? el('button.btn.primary', { onclick: () => NL.app.newIngredient() }, '＋ ' + NL.app.newLabel()) : null),
       filters(state),
       body);
