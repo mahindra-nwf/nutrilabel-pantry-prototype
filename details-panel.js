@@ -208,12 +208,23 @@
           } }, '⇩ Use as ingredient baseline') : null);
     }
 
-    const approve = i.status === 'draft'
-      ? el('button.btn.sm', { title: 'Approved ingredients show without the “draft” label in the Recipe Builder', onclick: async () => {
-          if (i.issues.length && !(await NL.confirm('Approve with open issues?', 'This ingredient still needs review: ' + i.issues.join('; ') + '. Approve it anyway?', { ok: 'Approve anyway' }))) return;
-          store.setStatus(i.id, 'approved'); NL.app.refresh(); NL.toast(i.name + ' approved.');
-        } }, '✓ Approve')
-      : el('button.btn.ghost.sm', { onclick: () => { store.setStatus(i.id, 'draft'); NL.app.refresh(); } }, 'Back to draft');
+    const canReview = store.me().role === 'admin';
+    const approve = !i.reviewedAt && canReview
+      ? el('button.btn.sm', { title: 'Confirm the current information, clear its review warnings, and approve it', onclick: async (e) => {
+          const warning = i.issues.length ? ' Current warnings: ' + i.issues.join('; ') + '.' : '';
+          if (!(await NL.confirm('Reviewed and ready to approve?', 'Your name and the review time will be saved in the audit trail.' + warning, { ok: 'Reviewed & approve' }))) return;
+          const button = e.currentTarget; button.disabled = true; button.textContent = 'Saving review…';
+          try { await store.reviewIngredient(i.id); NL.app.refresh(); NL.toast(i.name + ' reviewed and approved.'); }
+          catch (error) { button.disabled = false; button.textContent = '✓ Reviewed & approve'; NL.toast(error.message || 'Could not save the review.'); }
+        } }, '✓ Reviewed & approve')
+      : null;
+    const backToDraft = i.status === 'approved'
+      ? el('button.btn.ghost.sm', { onclick: () => { store.setStatus(i.id, 'draft'); NL.app.refresh(); } }, 'Back to draft')
+      : null;
+    const reviewHistory = canReview && i.reviewHistory && i.reviewHistory.length
+      ? section('Review history', el('ul.pt-sheets', {}, i.reviewHistory.map((r) => el('li', {},
+          el('b', {}, r.reviewerName || 'Unknown user'), el('div.faint', {}, NL.dateTime(r.reviewedAt))))))
+      : null;
 
     const left = el('div.pt-col', {},
       nutrition,
@@ -221,6 +232,7 @@
       food ? section('Ingredient statement', i.statement ? el('p', {}, i.statement) : el('p.faint', {}, el('i', {}, 'Not set'))) : null,
       section('Detailed quality notes', inlineText(i.qualityNotes, { multiline: true, placeholder: 'Quality audit notes, tracking details…', empty: 'Click to add notes', onSave: (v) => store.updateIngredient(i.id, { qualityNotes: v }) })),
       section('Recipe Builder teaser (max 50)', inlineText(i.teaser, { max: 50, placeholder: 'e.g. Juicy carrot', empty: 'Click to add teaser', onSave: (v) => store.updateIngredient(i.id, { teaser: v }) })),
+      reviewHistory,
       i.netWeightG || i.grossWeightG ? section('Weights', el('p', {},
         i.netWeightG ? 'Net weight: ' + NL.num(i.netWeightG) + ' g per ' + (i.uom || 'unit') : null,
         i.netWeightG && i.grossWeightG ? el('br') : null,
@@ -243,7 +255,9 @@
               c.name + (c.visibility === 'private' ? ' · Private' : ''))),
           el('span.pt-chip', {}, store.ITEM_TYPES.find((t) => t.key === i.itemType).label),
           el('span.pt-chip.' + (i.status === 'draft' ? 'draft' : 'ok'), {}, i.status),
-          approve),
+          i.reviewedAt ? el('span.pt-chip.ok', { title: 'Reviewed ' + NL.dateTime(i.reviewedAt) }, 'Reviewed by ' + (i.reviewerName || (i.reviewedByPerson && i.reviewedByPerson.name) || 'Unknown user')) : null,
+          approve,
+          backToDraft),
         el('div.faint', {}, i.code + (i.internalCode ? ' · internal ' + i.internalCode : '') + ' · updated ' + NL.timeAgo(i.updatedAt) + (i.updatedByPerson ? ' by ' + i.updatedByPerson.name : '')),
         switcher),
       i.issues.length ? el('div.pt-note.warn.pt-issues', {}, el('b', {}, 'Needs review'), el('ul', {}, i.issues.map((t) => el('li', {}, t)))) : null,
