@@ -365,7 +365,7 @@
       if (f.view === 'review' && !i.issues.length) return false;
       if (f.view === 'drafts' && i.status !== 'draft') return false;
       if (f.category && i.category !== f.category && !(i.categoryIds || []).includes(f.category)) return false;
-      if (f.allergen && !i.allergens.includes(f.allergen)) return false;
+      if (f.allergens && f.allergens.length && !f.allergens.some((a) => i.allergens.includes(a))) return false;
       if (f.supplierId && !i.sources.some((r) => r.supplierId === f.supplierId)) return false;
       if (q && ![i.name, i.code, i.internalCode, ...i.sources.map((r) => r.quote.sku)].some((t) => norm(t).includes(q))) return false;
       return true;
