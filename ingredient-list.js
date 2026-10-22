@@ -60,7 +60,7 @@
       !r.hasNutrition && i.itemType !== 'packaging' ? el('span.pt-warn-ic', { title: 'No spec sheet nutrition from this supplier' }, '⚠') : null);
   }
 
-  function row(state, { i, r }, stripe, index) {
+  function row(state, { i, r }, stripe) {
     const q = r && r.quote;
     const active = state.panel && state.panel.ingredientId === i.id && (state.panel.supplierId || null) === (r ? r.supplierId : null);
     const open = () => NL.app.openPanel(i.id, r && r.supplierId);
@@ -77,26 +77,7 @@
         { icon: '⌫', label: r ? 'Delete this supplier row' : 'Delete ingredient', danger: true, run: () => NL.app.deleteRow(i.id, r && r.supplierId) },
       ].filter(Boolean));
     };
-    return el('tr' + (stripe ? '.stripe' : '') + (active ? '.active' : ''), {
-      onclick: open, dataset: { id: i.id }, tabIndex: index === 0 ? 0 : -1,
-      onkeydown: (e) => {
-        if (e.target !== e.currentTarget) return;
-        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-          e.preventDefault();
-          const next = e.key === 'ArrowDown' ? e.currentTarget.nextElementSibling : e.currentTarget.previousElementSibling;
-          if (next) { e.currentTarget.tabIndex = -1; next.tabIndex = 0; next.focus(); }
-        } else if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          open();
-          const focused = document.querySelectorAll('.pt-table tbody tr')[index];
-          if (focused) {
-            document.querySelector('.pt-table tbody tr').tabIndex = -1;
-            focused.tabIndex = 0;
-            focused.focus();
-          }
-        }
-      },
-    },
+    return el('tr' + (stripe ? '.stripe' : '') + (active ? '.active' : ''), { onclick: open, dataset: { id: i.id } },
       el('td.pt-name', {},
         el('div.pt-name-line', {},
           el('b', {}, i.name),
@@ -126,7 +107,7 @@
           el('thead', {}, el('tr', {},
             th(state, 'name', 'Ingredient'), th(state, 'supplier', 'Supplier'), th(state, null, 'Pack size', 'nr'), th(state, null, 'Price / pack', 'nr'),
             th(state, 'perUom', 'Price / UOM', 'nr'), th(state, null, '$ / kg', 'nr pt-perkg'), th(state, null, 'Spec'), th(state, null, ''))),
-          el('tbody', {}, rows.map((x, index) => { if (x.i.id !== lastId) { stripe = !stripe; lastId = x.i.id; } return row(state, x, stripe, index); }))))
+          el('tbody', {}, rows.map((x) => { if (x.i.id !== lastId) { stripe = !stripe; lastId = x.i.id; } return row(state, x, stripe); }))))
       : el('div.pt-empty', {},
           el('div.pt-empty-ic', {}, total.length ? '⌕' : state.view === 'review' ? '✓' : '▤'),
           el('p', {}, total.length ? 'No ingredients match the current filters.' : state.view === 'review' ? 'Nothing needs review. Nice.' : 'No ingredients here yet.'),
