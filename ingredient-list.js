@@ -89,7 +89,11 @@
       el('td.nr', {}, q ? money(q.price) : '—'),
       el('td.nr', {}, perUom != null ? money(perUom, 4) + '/' + q.uom : '—'),
       el('td.nr.pt-perkg', {}, perKg != null ? money(perKg) + '/kg' : '—'),
-      el('td.pt-spec', {}, i.currentSheet ? el('span', { title: i.currentSheet.fileName }, '📄') : el('span.faint', {}, '—')),
+      el('td.pt-spec', {}, i.currentSheet ? el('button.pt-link', {
+        title: 'Open ' + i.currentSheet.fileName,
+        'aria-label': 'Open spec sheet for ' + i.name,
+        onclick: (e) => { e.stopPropagation(); NL.specFiles.openSheet(i.currentSheet); },
+      }, '📄') : el('span.faint', {}, '—')),
       el('td.pt-actions', {},
         el('button.btn.sm', { onclick: (e) => { e.stopPropagation(); open(); } }, 'Details'),
         el('button.btn.ghost.sm.pt-more', { title: 'More actions', 'aria-label': 'More actions', onclick: more }, '⋯')));
