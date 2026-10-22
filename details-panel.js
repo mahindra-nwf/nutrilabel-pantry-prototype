@@ -7,7 +7,8 @@
 
   /* ---------- pick a spec-sheet file (shared with the editor) ---------- */
   const ACCEPT = '.pdf,.doc,.docx,.png,.jpg,.jpeg,.webp,.gif,.xls,.xlsx';
-  const KEEP_MAX = 1.5 * 1048576; // larger files keep their name only (browser storage is small)
+  const KEEP_MAX = 1.5 * 1048576; // Playground only: browser storage is small
+  const UPLOAD_MAX = 25 * 1048576;
   function pickFile() {
     return new Promise((resolve) => {
       const input = el('input', { type: 'file', accept: ACCEPT, style: { display: 'none' } });
@@ -18,6 +19,8 @@
   }
   function readFile(f) {
     return new Promise((resolve) => {
+      if (store.isLive && f.size > UPLOAD_MAX) { NL.toast('Use a supported file up to 25 MB.'); return resolve(null); }
+      if (store.isLive) return resolve({ fileName: f.name, size: f.size, file: f });
       if (f.size > KEEP_MAX) return resolve({ fileName: f.name, size: f.size, dataUrl: null });
       const r = new FileReader();
       r.onload = () => resolve({ fileName: f.name, size: f.size, dataUrl: r.result });
@@ -30,7 +33,7 @@
     if (url) NL.openDataUrl(url);
     else NL.toast(sh.size > KEEP_MAX ? 'This file was too big to keep in the prototype; only its name was saved.' : 'Sample spec sheet: there is no real file behind it in the prototype.');
   }
-  NL.specFiles = { pickFile, readFile, openSheet, ACCEPT, KEEP_MAX };
+  NL.specFiles = { pickFile, readFile, openSheet, ACCEPT, KEEP_MAX, UPLOAD_MAX };
 
   /* ---------- small building blocks ---------- */
   const section = (title, ...kids) => el('section.pt-sec', {}, el('h3', {}, title), ...kids);
@@ -92,10 +95,12 @@
     const upload = async () => {
       const f = await pickFile(); if (!f) return;
       const supplierId = NL.app.state.panel && NL.app.state.panel.supplierId;
-      const res = store.addSpecSheet(i.id, Object.assign(f, { supplierId }));
-      NL.app.refresh();
-      NL.toast(store.isLive ? 'Spec sheet added (name only — keeping the file comes later).'
-        : res.stored || !f.dataUrl ? (f.dataUrl ? 'Spec sheet added.' : 'Spec sheet added (name only — file too big for the prototype).') : 'Spec sheet added (name only — browser storage is full).');
+      try {
+        const res = await store.addSpecSheet(i.id, Object.assign(f, { supplierId }));
+        NL.app.refresh();
+        NL.toast(store.isLive ? 'Spec sheet uploaded for your R&D team.'
+          : res.stored || !f.dataUrl ? (f.dataUrl ? 'Spec sheet added.' : 'Spec sheet added (name only — file too big for the prototype).') : 'Spec sheet added (name only — browser storage is full).');
+      } catch (e) { NL.toast(e.message || 'Could not upload the spec sheet.'); }
     };
     const list = i.specSheets.slice().sort((a, b) => b.uploadedAt - a.uploadedAt);
     const supName = (id) => { const s = id && store.getSupplier(id); return s ? s.name : null; };

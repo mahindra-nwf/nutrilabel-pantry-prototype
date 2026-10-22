@@ -239,7 +239,10 @@
         if (replace) existing.sources.forEach((r) => store.recycleSupplierRow(saved.id, r.supplierId));
         if (replace || !existing || !existing.sources.length) store.setPreferred(saved.id, sid);
       }
-      if (staged) store.addSpecSheet(saved.id, Object.assign(staged, { supplierId: sid || null }));
+      if (staged) {
+        try { await store.addSpecSheet(saved.id, Object.assign(staged, { supplierId: sid || null })); }
+        catch (e) { errBox.textContent = e.message || 'Ingredient saved, but the spec sheet upload failed.'; return; }
+      }
       m.close();
       NL.toast(existing ? 'Ingredient saved.' : saved.name + ' added as a draft.');
       opts.onSaved && opts.onSaved(saved, sid || null);
