@@ -479,13 +479,32 @@
   function setStatus(id, status) { const i = ing(id); if (!i) return; i.status = status; touch(i); save(); }
 
   /* ---------- spec sheets ---------- */
-  function addSpecSheet(ingId, file) {
+  async function addSpecSheet(ingId, file) {
     const i = ing(ingId); if (!i) return null;
+    if (LIVE) {
+      const prepared = await fetch('/api/pantry/spec-sheets', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'prepare', ingredientId: ingId, supplierId: file.supplierId || null, fileName: file.fileName, size: file.size }) });
+      const ready = await prepared.json();
+      if (!prepared.ok) throw new Error(ready.error || 'Could not prepare the upload.');
+      const form = new FormData();
+      form.append('cacheControl', '3600');
+      form.append('', file.file.slice(0, file.file.size, ready.contentType), file.fileName);
+      const uploaded = await fetch(ready.signedUrl, { method: 'PUT', headers: { 'x-upsert': 'false' }, body: form });
+      if (!uploaded.ok) throw new Error('Could not upload the spec sheet.');
+      const attached = await fetch('/api/pantry/spec-sheets', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'attach', ingredientId: ingId, supplierId: file.supplierId || null, sheet: ready.sheet }) });
+      const done = await attached.json();
+      if (!attached.ok) throw new Error(done.error || 'Could not attach the spec sheet.');
+      i.specSheets.unshift(done.sheet);
+      i.currentSheetId = done.sheet.id;
+      touch(i);
+      return { sheet: copy(done.sheet), stored: true };
+    }
     const sh = { id: uid('sh'), fileName: file.fileName, uploadedAt: Date.now(), size: file.size || 0, supplierId: file.supplierId || null, details: null };
     i.specSheets.unshift(sh);
     i.currentSheetId = sh.id;
     let stored = false;
-    if (file.dataUrl && !LIVE) { // Live keeps the file name only for now
+    if (file.dataUrl) {
       db.files = db.files || {};
       db.files[sh.id] = file.dataUrl;
       stored = save();
