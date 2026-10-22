@@ -1,4 +1,4 @@
-/* sidebar.js — ＋ New ingredient / New packaging (Food and Packaging tabs only), the list views, Suppliers, Recycle Bin, Reset demo data. */
+/* sidebar.js — the list views, Suppliers, Recycle Bin, and Reset demo data. */
 (function () {
   const { el } = NL;
 
@@ -9,7 +9,6 @@
     }, el('span.ic', {}, ic), el('span.lbl', {}, label), n != null ? el('span.pt-count' + (warn && n ? '.warn' : ''), {}, String(n)) : null);
 
     NL.fill(document.getElementById('sidebar'),
-      NL.app.newLabel() ? el('button.pt-new', { onclick: () => NL.app.newIngredient() }, el('span.plus', {}, '＋'), NL.app.newLabel()) : null,
       el('nav.pt-nav', { 'aria-label': 'Pantry' },
         el('div.pt-nav-h', {}, 'Ingredients'),
         item('all', '▤', 'All items', c.all),
