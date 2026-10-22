@@ -17,6 +17,7 @@
     const { key, dir } = state.sort;
     const val = (x) => key === 'supplier' ? (x.r ? x.r.supplierName : '￿').toLowerCase()
       : key === 'category' ? (x.i.category || '').toLowerCase()
+      : key === 'review' ? x.i.issues.length
       : key === 'perUom' ? (x.r ? store.perUom(x.r.quote) ?? Infinity : Infinity)
       : x.i.name.trim().toLowerCase();
     rows.sort((a, b) => {
@@ -120,6 +121,11 @@
           el('div.muted', {}, items.length + ' of ' + total.length + ' ingredient' + (total.length === 1 ? '' : 's') + (rows.length !== items.length ? ' · ' + rows.length + ' supplier rows' : '')),
           SUBS[state.view] ? el('div.faint.pt-head-sub', {}, SUBS[state.view]) : null),
         el('span.spacer'),
+        state.view === 'review' ? el('button.btn', {
+          'aria-pressed': state.sort.key === 'review' ? 'true' : 'false',
+          title: 'Click to sort by review count; click again to reverse',
+          onclick: () => NL.app.go({ sort: { key: 'review', dir: state.sort.key === 'review' && state.sort.dir === 'desc' ? 'asc' : 'desc' } }, { replace: true }),
+        }, state.sort.key === 'review' ? 'Review count ' + (state.sort.dir === 'desc' ? '↓' : '↑') : 'Sort by review count') : null,
         el('button.btn', { onclick: () => NL.duplicates.open() }, '⧉ Check for duplicates'),
         NL.app.newLabel() ? el('button.btn.primary', { onclick: () => NL.app.newIngredient() }, '＋ ' + NL.app.newLabel()) : null),
       filters(state),
