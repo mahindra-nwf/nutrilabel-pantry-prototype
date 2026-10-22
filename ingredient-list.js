@@ -17,7 +17,7 @@
     const { key, dir } = state.sort;
     const val = (x) => key === 'supplier' ? (x.r ? x.r.supplierName : '￿').toLowerCase()
       : key === 'category' ? (x.i.category || '').toLowerCase()
-      : key === 'date' ? (x.r ? x.r.quote.quoteDate : 0)
+      : key === 'review' ? x.i.issues.length
       : key === 'perUom' ? (x.r ? store.perUom(x.r.quote) ?? Infinity : Infinity)
       : x.i.name.trim().toLowerCase();
     rows.sort((a, b) => {
@@ -34,7 +34,10 @@
     }, el('option', { value: '' }, all), opts.map(([v, l]) => el('option', { value: v, selected: state[key] === v }, l)));
     const any = state.category || state.supplierId || state.allergen || state.query;
     return el('div.pt-filters', {},
-      sel('category', 'All categories', store.categories().map((c) => [c, c])),
+      sel('category', 'All categories', [
+        ...store.categories().map((c) => [c, c + ' · Main']),
+        ...store.customCategories().map((c) => [c.id, c.name + (c.visibility === 'private' ? ' · Private' : ' · Shared')]),
+      ]),
       sel('supplierId', 'All suppliers', store.listSuppliers().map((s) => [s.id, s.name])),
       sel('allergen', 'All allergens', store.ALLERGENS.map((a) => [a, a])),
       any ? el('button.btn.ghost.sm', { onclick: () => NL.app.go({ category: '', supplierId: '', allergen: '', query: '' }, { replace: true }) }, '✕ Clear filters') : null);
@@ -86,7 +89,6 @@
       el('td.nr', {}, q ? money(q.price) : '—'),
       el('td.nr', {}, perUom != null ? money(perUom, 4) + '/' + q.uom : '—'),
       el('td.nr.pt-perkg', {}, perKg != null ? money(perKg) + '/kg' : '—'),
-      el('td', {}, q ? el('span.pt-age.' + NL.ageClass(q.quoteDate), { title: NL.date(q.quoteDate) }, NL.timeAgo(q.quoteDate)) : '—'),
       el('td.pt-spec', {}, i.currentSheet ? el('span', { title: i.currentSheet.fileName }, '📄') : el('span.faint', {}, '—')),
       el('td.pt-actions', {},
         el('button.btn.sm', { onclick: (e) => { e.stopPropagation(); open(); } }, 'Details'),
@@ -104,7 +106,7 @@
       ? el('div.pt-table-wrap', {}, el('table.pt-table', {},
           el('thead', {}, el('tr', {},
             th(state, 'name', 'Ingredient'), th(state, 'supplier', 'Supplier'), th(state, null, 'Pack size', 'nr'), th(state, null, 'Price / pack', 'nr'),
-            th(state, 'perUom', 'Price / UOM', 'nr'), th(state, null, '$ / kg', 'nr pt-perkg'), th(state, 'date', 'Price date'), th(state, null, 'Spec'), th(state, null, ''))),
+            th(state, 'perUom', 'Price / UOM', 'nr'), th(state, null, '$ / kg', 'nr pt-perkg'), th(state, null, 'Spec'), th(state, null, ''))),
           el('tbody', {}, rows.map((x) => { if (x.i.id !== lastId) { stripe = !stripe; lastId = x.i.id; } return row(state, x, stripe); }))))
       : el('div.pt-empty', {},
           el('div.pt-empty-ic', {}, total.length ? '⌕' : state.view === 'review' ? '✓' : '▤'),
@@ -119,7 +121,11 @@
           el('div.muted', {}, items.length + ' of ' + total.length + ' ingredient' + (total.length === 1 ? '' : 's') + (rows.length !== items.length ? ' · ' + rows.length + ' supplier rows' : '')),
           SUBS[state.view] ? el('div.faint.pt-head-sub', {}, SUBS[state.view]) : null),
         el('span.spacer'),
-        el('button.btn', { onclick: () => NL.duplicates.open() }, '⧉ Check for duplicates'),
+        state.view === 'review' ? el('button.btn', {
+          'aria-pressed': state.sort.key === 'review' ? 'true' : 'false',
+          title: 'Click to sort by review count; click again to reverse',
+          onclick: () => NL.app.go({ sort: { key: 'review', dir: state.sort.key === 'review' && state.sort.dir === 'desc' ? 'asc' : 'desc' } }, { replace: true }),
+        }, state.sort.key === 'review' ? 'Review count ' + (state.sort.dir === 'desc' ? '↓' : '↑') : 'Sort by review count') : null,
         NL.app.newLabel() ? el('button.btn.primary', { onclick: () => NL.app.newIngredient() }, '＋ ' + NL.app.newLabel()) : null),
       filters(state),
       body);

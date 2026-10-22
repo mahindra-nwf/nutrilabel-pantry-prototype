@@ -5,6 +5,15 @@ Status: **first version done.** Everything the Raw Materials module does (E:\Pan
 approved, Needs review, supplier switcher, Suppliers page). It follows the same rules as the Workspace prototype
 (NLv4 `docs/PROTOTYPE_BRIEF.md`) so it can be rebuilt as NLv4's `pantry` module later.
 
+## Live mode (inside the Northwest Frozen app)
+At `/pantry/` with Live selected on Home, `store.js` works on the organization's database through the app's
+`/api/pantry` (northwest-frozen-mvp, `src/modules/pantry/`): opening the page loads ingredients, suppliers, prices and
+the Recycle Bin; every `save()` sends only what changed since the last load or save (puts and deletes), with a
+synchronous request so the screens' synchronous calls keep working. Ids are uuids in Live. The ingredients are the
+Recipe Builder's: Pantry also sends each ingredient's supplier and cost per kg (its costing rule) for the builder.
+Deleting an ingredient archives it in the database. Spec-sheet files are not stored in Live yet (name only).
+Playground stays exactly as before: made-up data in this browser.
+
 ## How it runs
 Plain HTML/CSS/JS, no build, no npm. Classic `<script>`s (not modules), so it also works when opened straight from
 disk. Each screen file puts one object on `window.NL` with a `render(state)` function.
