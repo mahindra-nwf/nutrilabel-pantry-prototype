@@ -69,12 +69,12 @@
       e.stopPropagation();
       const b = e.currentTarget.getBoundingClientRect();
       NL.menu(b.left - 150, b.bottom + 4, [
-        { icon: 'ⓘ', label: 'Details', run: open },
-        { icon: '✎', label: 'Edit ingredient', run: () => NL.app.editIngredient(i.id, r && r.supplierId) },
-        { icon: '$', label: r ? 'Record new price' : 'Add supplier & price', run: () => NL.app.recordPrice(i.id, r && r.supplierId) },
-        r && !r.preferred && i.sources.length > 1 ? { icon: '★', label: 'Make preferred supplier', run: () => { store.setPreferred(i.id, r.supplierId); NL.app.refresh(); NL.toast(r.supplierName + ' is now the preferred supplier.'); } } : null,
+        { label: 'Details', run: open },
+        { label: 'Edit ingredient', run: () => NL.app.editIngredient(i.id, r && r.supplierId) },
+        { label: r ? 'Record new price' : 'Add supplier & price', run: () => NL.app.recordPrice(i.id, r && r.supplierId) },
+        r && !r.preferred && i.sources.length > 1 ? { label: 'Make preferred supplier', run: () => { store.setPreferred(i.id, r.supplierId); NL.app.refresh(); NL.toast(r.supplierName + ' is now the preferred supplier.'); } } : null,
         'sep',
-        { icon: '⌫', label: r ? 'Delete this supplier row' : 'Delete ingredient', danger: true, run: () => NL.app.deleteRow(i.id, r && r.supplierId) },
+        { label: r ? 'Delete this supplier' : 'Delete ingredient', danger: true, run: () => NL.app.deleteRow(i.id, r && r.supplierId) },
       ].filter(Boolean));
     };
     return el('tr' + (stripe ? '.stripe' : '') + (active ? '.active' : ''), { onclick: open, dataset: { id: i.id } },

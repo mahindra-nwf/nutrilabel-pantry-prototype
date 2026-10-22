@@ -84,7 +84,7 @@ window.NL = window.NL || {};
     closeMenu();
     const m = el('div.pt-menu', { role: 'menu' }, items.map((it) => it === 'sep' ? el('div.pt-menu-sep') :
       el('button' + (it.danger ? '.danger' : ''), { role: 'menuitem', disabled: it.disabled, onclick: () => { closeMenu(); it.run(); } },
-        el('span.ic', {}, it.icon || ''), it.label)));
+        it.icon ? el('span.ic', {}, it.icon) : null, it.label)));
     document.body.append(m);
     const r = m.getBoundingClientRect();
     m.style.left = Math.max(8, Math.min(x, innerWidth - r.width - 8)) + 'px';
