@@ -494,6 +494,13 @@
     i.reviewHistory = [{ id: uid('rv'), reviewedAt: at, reviewedBy: ME, reviewerName: i.reviewerName }, ...(i.reviewHistory || [])];
     save();
   }
+  function returnToReview(id) {
+    const i = ing(id); if (!i) throw new Error('Ingredient not found.');
+    i.status = 'draft';
+    touch(i);
+    save();
+    return getIngredient(id);
+  }
 
   /* ---------- spec sheets ---------- */
   async function addSpecSheet(ingId, file) {
@@ -829,7 +836,7 @@
     isLive: LIVE,
     NUTRIENTS, ALLERGENS, TREE_NUTS, WEIGHT_UOMS, UNIT_TO_G, SUPPLIER_CATEGORIES, ITEM_TYPES, BIN_HOURS,
     me, listIngredients, counts, getIngredient, categories, supportsCategories, customCategories, createCategory, updateCategory, deleteCategory, uoms, packConfigs, findByName,
-    createIngredient, updateIngredient, reviewIngredient,
+    createIngredient, updateIngredient, reviewIngredient, returnToReview,
     addSpecSheet, sheetFile, setCurrentSheet, recycleSpecSheet,
     listSuppliers, getSupplier, saveSupplier, recycleSupplier,
     quoteHistory, getQuote, saveQuote, setPreferred, recycleQuote, recycleSupplierRow, recycleIngredient,

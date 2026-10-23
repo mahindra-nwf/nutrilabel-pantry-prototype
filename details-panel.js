@@ -237,15 +237,19 @@
     }
 
     const canReview = store.me().role === 'admin';
-    const approve = !i.reviewedAt && canReview
+    const reviewAction = !i.reviewedAt && canReview
       ? el('button.btn.sm', { title: 'Confirm the current information, clear its review warnings, and approve it', onclick: async (e) => {
+          const button = e.currentTarget;
           const warning = i.issues.length ? ' Current warnings: ' + i.issues.join('; ') + '.' : '';
-          if (!(await NL.confirm('Reviewed and ready to approve?', 'Your name and the review time will be saved in the audit trail.' + warning, { ok: 'Reviewed & approve' }))) return;
-          const button = e.currentTarget; button.disabled = true; button.textContent = 'Saving review…';
-          try { await store.reviewIngredient(i.id); NL.app.refresh(); NL.toast(i.name + ' reviewed and approved.'); }
-          catch (error) { button.disabled = false; button.textContent = '✓ Reviewed & approve'; NL.toast(error.message || 'Could not save the review.'); }
-        } }, '✓ Reviewed & approve')
-      : null;
+          if (!(await NL.confirm('Mark as reviewed?', 'This clears the current warnings. Your name and the review time will be saved in the audit trail.' + warning, { ok: 'Reviewed' }))) return;
+          button.disabled = true; button.textContent = 'Saving review…';
+          try { await store.reviewIngredient(i.id); NL.app.refresh(); NL.toast(i.name + ' marked as reviewed.'); }
+          catch (error) { button.disabled = false; button.textContent = 'Reviewed'; NL.toast(error.message || 'Could not save the review.'); }
+        } }, 'Reviewed')
+      : i.reviewedAt && canReview ? el('button.btn.ghost.sm', { onclick: async () => {
+          if (!(await NL.confirm('Return to review?', 'The item will show its warnings again. The earlier review remains in the audit trail.', { ok: 'Return to review' }))) return;
+          store.returnToReview(i.id); NL.app.refresh(); NL.toast(i.name + ' returned to Needs review.');
+        } }, 'Return to review') : null;
     const reviewHistory = canReview && i.reviewHistory && i.reviewHistory.length
       ? section('Review history', el('ul.pt-sheets', {}, i.reviewHistory.map((r) => el('li', {},
           el('b', {}, r.reviewerName || 'Unknown user'), el('div.faint', {}, NL.dateTime(r.reviewedAt))))))
@@ -279,10 +283,10 @@
             el('span.pt-chip', { title: c.visibility === 'private' ? 'Private — only you can see this category' : 'Shared with Pantry members' },
               c.name + (c.visibility === 'private' ? ' · Private' : ''))),
           el('span.pt-chip', {}, store.ITEM_TYPES.find((t) => t.key === i.itemType).label),
-          i.reviewedAt ? el('span.pt-chip.ok', { title: 'Reviewed ' + NL.dateTime(i.reviewedAt) }, 'Reviewed by ' + (i.reviewerName || (i.reviewedByPerson && i.reviewedByPerson.name) || 'Unknown user')) : null,
-          approve),
+          reviewAction),
         el('div.faint', {}, i.code + (i.internalCode ? ' · internal ' + i.internalCode : '') + ' · updated ' + NL.timeAgo(i.updatedAt) + (i.updatedByPerson ? ' by ' + i.updatedByPerson.name : '')),
         switcher),
+      i.reviewedAt ? el('p.pt-ok-txt', {}, 'Reviewed by ' + (i.reviewerName || (i.reviewedByPerson && i.reviewedByPerson.name) || 'Unknown user') + ' · ' + NL.dateTime(i.reviewedAt)) : null,
       i.issues.length ? el('div.pt-note.warn.pt-issues', {}, el('b', {}, 'Needs review'), el('ul', {}, i.issues.map((t) => el('li', {}, t)))) : null,
       el('div.pt-det-body', {}, left, right),
       el('div.pt-det-foot', {},
