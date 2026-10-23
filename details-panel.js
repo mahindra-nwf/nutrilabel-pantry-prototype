@@ -63,13 +63,34 @@
         el('td', {}, x.label),
         el('td.nr', {}, n && n[x.key] != null ? NL.num(n[x.key]) + ' ' + x.unit : el('span.pt-review-txt', {}, 'Needs review'))))));
   }
+  const gramBasis = (value) => {
+    const match = String(value || '').trim().match(/^(\d+(?:\.\d+)?)\s*(?:g|gram|grams)$/i);
+    return match && Number(match[1]) > 0 ? Number(match[1]) : null;
+  };
   function nutritionEditor(q, seedN) {
     const inputs = {};
     const basis = el('input.txt', { value: q.nutritionBasis || '100 g', maxLength: 100, placeholder: 'e.g. 100 g, 1 packet (6 ml), 1/4 cup' });
+    const conversionNote = el('div', { 'aria-live': 'polite' });
+    let displayedGrams = gramBasis(basis.value);
     const grid = el('div.pt-nut-edit', {}, store.NUTRIENTS.map((x) => {
       inputs[x.key] = el('input.txt.num-in', { type: 'number', min: 0, step: 'any', placeholder: 'Unknown', value: seedN && seedN[x.key] != null ? seedN[x.key] : '' });
       return el('label.ind' + x.indent, {}, el('span', {}, x.label + ' (' + x.unit + ')'), inputs[x.key]);
     }));
+    basis.addEventListener('input', () => {
+      const nextGrams = gramBasis(basis.value);
+      if (!nextGrams || !displayedGrams) {
+        return NL.fill(conversionNote, el('p.pt-note.warn', {}, 'Automatic conversion skipped. Enter the values printed for this portion because its gram weight is unknown.'));
+      }
+      if (nextGrams !== displayedGrams) {
+        const factor = nextGrams / displayedGrams;
+        store.NUTRIENTS.forEach((x) => {
+          const value = NL.readNum(inputs[x.key].value);
+          if (value != null) inputs[x.key].value = Math.round(value * factor * 10000) / 10000;
+        });
+        NL.fill(conversionNote, el('p.pt-note', {}, 'Values recalculated from ' + displayedGrams + ' g to ' + nextGrams + ' g.'));
+        displayedGrams = nextGrams;
+      }
+    });
     const saveIt = () => {
       const nutritionBasis = basis.value.trim();
       if (!nutritionBasis) { basis.focus(); return NL.toast('Enter what these nutrition values are based on.'); }
@@ -77,7 +98,7 @@
       store.saveQuote({ n, nutritionBasis }, q.id);
       editingN = null; NL.app.refresh(); NL.toast('Spec sheet nutrition saved.');
     };
-    return el('div', {}, field('Values shown per', basis, 'Copy the basis printed on the spec sheet, such as “100 g” or “1 packet (6 ml)”.'), grid,
+    return el('div', {}, field('Values shown per', basis, 'Gram portions are recalculated automatically. Other portions stay unchanged for QA to enter from the sheet.'), conversionNote, grid,
       el('div.pt-inline-btns', {}, el('span.faint', {}, 'Blank = unknown. Enter 0 only if it is known to be zero.'), el('span.spacer'),
       el('button.btn.sm', { onclick: () => { editingN = null; NL.app.refresh(); } }, 'Cancel'), el('button.btn.sm.primary', { onclick: saveIt }, 'Save')));
   }
@@ -201,7 +222,7 @@
       const basis = supN ? (q.nutritionBasis || '100 g') : '100 g';
       const isPer100g = basis.trim().toLocaleLowerCase().replace(/\s+/g, '') === '100g';
       nutrition = section(title + ' · per ' + basis,
-        supN && !isPer100g ? el('p.pt-note.warn', {}, 'Notice: these values are shown per ' + basis + ', not per 100 g. They cannot be used as the ingredient baseline until they are converted to per 100 g.') : null,
+        supN && !isPer100g ? el('p.pt-note.warn', {}, 'Notice: these values are shown per ' + basis + ', not per 100 g.' + (gramBasis(basis) ? ' Pantry can recalculate them when QA changes the gram portion.' : ' Automatic conversion was skipped because the gram weight is unknown.')) : null,
         q && !supN ? el('p.pt-note.warn', {}, 'No spec sheet nutrition for this supplier. Values below are the ingredient baseline.') : null,
         editingN && q && editingN === q.id ? nutritionEditor(q, supN || i.n)
           : nutritionTable(supN || i.n, !!q, () => { editingN = q.id; NL.app.refresh(); }),
