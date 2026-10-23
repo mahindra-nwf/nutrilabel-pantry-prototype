@@ -252,17 +252,24 @@
         } }, 'Return to review') : null;
     // an editor's change waiting for a manager: Reviewed accepts it, Undo puts the earlier version back
     const change = i.changeReview;
-    const changeNote = change ? el('div.pt-note.pt-change', {},
-      el('span.pt-review-txt', {}, 'Awaiting review'), ' ',
-      (change.action === 'created' ? 'Added by ' : 'Changed by ') + change.editors.join(', ') + ' · ' + NL.dateTime(change.lastChangedAt),
-      canReview && change.id ? el('button.btn.ghost.sm', { style: 'margin-left:8px', onclick: async (e) => {
-        const button = e.currentTarget;
-        const what = change.action === 'created' ? i.name + ' will be archived.' : i.name + ', its prices and its categories go back to how they were before ' + change.editors.join(', ') + ' changed them.';
-        if (!(await NL.confirm('Undo this change?', what, { ok: 'Undo' }))) return;
-        button.disabled = true; button.textContent = 'Undoing…';
-        try { await store.undoChange(change.id); NL.app.refresh(); NL.toast('Change to ' + i.name + ' undone.'); }
-        catch (error) { button.disabled = false; button.textContent = 'Undo'; NL.toast(error.message || 'Could not undo the change.'); }
-      } }, 'Undo') : null) : null;
+    const who = change ? change.editors.join(', ') : '';
+    const act = (undo) => async (e) => {
+      const button = e.currentTarget;
+      const what = undo
+        ? (change.action === 'created' ? i.name + ' will be archived.' : i.name + ', its prices and its categories go back to how they were before ' + who + ' changed them.')
+        : 'Keep ' + who + '’s change to ' + i.name + '.';
+      if (!(await NL.confirm(undo ? 'Undo this change?' : 'Accept this change?', what, { ok: undo ? 'Undo change' : 'Accept' }))) return;
+      button.disabled = true;
+      try { await (undo ? store.undoChange : store.acceptChange)(change.id); NL.app.refresh(); NL.toast(undo ? 'Change to ' + i.name + ' undone.' : 'Change to ' + i.name + ' accepted.'); }
+      catch (error) { button.disabled = false; NL.toast(error.message || 'Could not save that.'); }
+    };
+    const changeNote = change ? el('div.pt-note.warn.pt-change', {},
+      el('div', {}, el('b', {}, 'Awaiting review'), ' — ' + (change.action === 'created' ? 'added' : 'changed') + ' by ' + who + ' · ' + NL.dateTime(change.lastChangedAt)),
+      canReview && change.id
+        ? el('div.pt-change-btns', {},
+            el('button.btn.sm.primary', { onclick: act(false) }, 'Accept'),
+            el('button.btn.sm', { onclick: act(true) }, 'Undo change'))
+        : el('div.faint', {}, 'A Pantry manager will accept or undo this change.')) : null;
     const reviewHistory = canReview && i.reviewHistory && i.reviewHistory.length
       ? section('Review history', el('ul.pt-sheets', {}, i.reviewHistory.map((r) => el('li', {},
           el('b', {}, r.reviewerName || 'Unknown user'), el('div.faint', {}, NL.dateTime(r.reviewedAt))))))
