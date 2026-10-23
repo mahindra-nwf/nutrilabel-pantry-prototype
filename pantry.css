@@ -268,3 +268,7 @@ p.pt-review-txt { display: inline-block; padding: 3px 8px; margin: 0; }
   .pt-form-row { flex-direction: column; gap: 0; }
   .pt-nut-edit.two, .pt-al-grid { grid-template-columns: 1fr 1fr; }
 }
+/* an editor's change waiting for a manager (Edit -> review -> Manage) */
+.pt-chip.change { background: var(--warn-soft); color: var(--text); border-color: transparent; }
+.pt-change { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.pt-change-btns { display: flex; gap: 6px; }

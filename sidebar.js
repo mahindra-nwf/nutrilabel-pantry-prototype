@@ -15,6 +15,7 @@
         item('food', '◍', 'Food', c.food),
         item('packaging', '▢', 'Packaging', c.packaging),
         item('review', '⚠', 'Needs review', c.review, true),
+        store.isLive ? item('changes', '✎', 'Awaiting review', c.changes, true) : null, // editors' changes for a manager
         el('div.pt-nav-h', {}, 'More'),
         item('suppliers', '⛟', 'Suppliers', c.suppliers),
         item('bin', '♻', 'Recycle Bin', c.bin)),

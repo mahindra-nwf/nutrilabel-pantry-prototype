@@ -1,7 +1,7 @@
 /* ingredient-list.js — the Raw Materials table: one row per ingredient × supplier, filters, sort, row actions. */
 (function () {
   const { el, money } = NL;
-  const TITLES = { all: 'All items', food: 'Food', packaging: 'Packaging', review: 'Needs review' };
+  const TITLES = { all: 'All items', food: 'Food', packaging: 'Packaging', review: 'Needs review', changes: 'Awaiting review' };
   const SUBS = {
     review: 'Unknown nutrition values, unverified allergens, missing statements, no supplier, no price or a price older than 6 months.',
   };
@@ -102,7 +102,8 @@
       el('td.pt-name', {},
         el('div.pt-name-line', {},
           el('b', {}, i.name),
-          i.issues.length ? el('span.pt-chip.review', { title: i.issues.join('\n') }, '⚠ ' + i.issues.length) : null),
+          i.issues.length ? el('span.pt-chip.review', { title: i.issues.join('\n') }, '⚠ ' + i.issues.length) : null,
+          i.changeReview ? el('span.pt-chip.change', { title: 'Changed by ' + i.changeReview.editors.join(', ') + ': waiting for a manager' }, '✎ Awaiting review') : null),
         el('div.pt-sub', {}, i.code + (i.category ? ' · ' + i.category : ''))),
       supplierCell(i, r),
       el('td.nr', {}, q && q.packQty != null ? NL.num(q.packQty) + ' ' + (q.uom || '') + (q.packConfig ? ' / ' + q.packConfig : '') : '—'),
@@ -134,7 +135,7 @@
           el('tbody', {}, rows.map((x) => { if (x.i.id !== lastId) { stripe = !stripe; lastId = x.i.id; } return row(state, x, stripe); }))))
       : el('div.pt-empty', {},
           el('div.pt-empty-ic', {}, total.length ? '⌕' : state.view === 'review' ? '✓' : '▤'),
-          el('p', {}, total.length ? 'No ingredients match the current filters.' : state.view === 'review' ? 'Nothing needs review. Nice.' : 'No ingredients here yet.'),
+          el('p', {}, total.length ? 'No ingredients match the current filters.' : state.view === 'review' ? 'Nothing needs review. Nice.' : state.view === 'changes' ? 'No changes are waiting for review.' : 'No ingredients here yet.'),
           total.length ? el('button.btn', { onclick: resetFilters }, 'Reset filters')
             : NL.app.newLabel() ? el('button.btn.primary', { onclick: () => NL.app.newIngredient() }, '＋ ' + NL.app.newLabel()) : null);
 

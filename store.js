@@ -371,6 +371,7 @@
       if (f.view === 'food' && i.itemType === 'packaging') return false;
       if (f.view === 'packaging' && i.itemType !== 'packaging') return false;
       if (f.view === 'review' && !i.issues.length) return false;
+      if (f.view === 'changes' && !i.changeReview) return false; // an editor's change waiting for a manager
       if (f.category && i.category !== f.category && !(i.categoryIds || []).includes(f.category)) return false;
       if (f.allergens && f.allergens.length && !f.allergens.some((a) => i.allergens.includes(a))) return false;
       if (f.supplierId && !i.sources.some((r) => r.supplierId === f.supplierId)) return false;
@@ -382,7 +383,7 @@
     const all = db.ingredients.map(deco);
     return {
       all: all.length, food: all.filter((i) => i.itemType !== 'packaging').length, packaging: all.filter((i) => i.itemType === 'packaging').length,
-      review: all.filter((i) => i.issues.length).length,
+      review: all.filter((i) => i.issues.length).length, changes: all.filter((i) => i.changeReview).length,
       suppliers: db.suppliers.length, bin: listBin().length,
     };
   }
@@ -497,13 +498,15 @@
     i.reviewHistory = [{ id: uid('rv'), reviewedAt: at, reviewedBy: ME, reviewerName: i.reviewerName }, ...(i.reviewHistory || [])];
     save();
   }
-  // Undo an editor's change: the ingredient, its prices and its categories go back to how they were (Live, managers)
-  async function undoChange(reviewId) {
-    const res = await fetch('/api/pantry/changes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reviewId }) });
+  // An editor's change (Live, managers): Accept keeps it; Undo puts the ingredient, its prices and its categories back
+  async function resolveChange(reviewId, undo) {
+    const res = await fetch('/api/pantry/changes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reviewId, undo }) });
     const out = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(out.error || 'Could not undo the change.');
+    if (!res.ok) throw new Error(out.error || (undo ? 'Could not undo the change.' : 'Could not accept the change.'));
     await sync();
   }
+  const undoChange = (reviewId) => resolveChange(reviewId, true);
+  const acceptChange = (reviewId) => resolveChange(reviewId, false);
   function returnToReview(id) {
     const i = ing(id); if (!i) throw new Error('Ingredient not found.');
     i.status = 'draft';
@@ -847,7 +850,7 @@
     isLive: LIVE,
     NUTRIENTS, ALLERGENS, TREE_NUTS, WEIGHT_UOMS, UNIT_TO_G, SUPPLIER_CATEGORIES, ITEM_TYPES, BIN_HOURS,
     me, listIngredients, counts, getIngredient, categories, supportsCategories, customCategories, createCategory, updateCategory, deleteCategory, uoms, packConfigs, findByName,
-    createIngredient, updateIngredient, reviewIngredient, returnToReview, undoChange,
+    createIngredient, updateIngredient, reviewIngredient, returnToReview, undoChange, acceptChange,
     addSpecSheet, sheetFile, setCurrentSheet, recycleSpecSheet,
     listSuppliers, getSupplier, saveSupplier, recycleSupplier,
     quoteHistory, getQuote, saveQuote, setPreferred, recycleQuote, recycleSupplierRow, recycleIngredient,
