@@ -244,7 +244,7 @@
         catch (e) { errBox.textContent = e.message || 'Ingredient saved, but the spec sheet upload failed.'; return; }
       }
       m.close();
-      NL.toast(existing ? 'Ingredient saved.' : saved.name + ' added as a draft.');
+      NL.toast(existing ? 'Ingredient saved.' : saved.name + ' added to Needs review.');
       opts.onSaved && opts.onSaved(saved, sid || null);
       NL.app.refresh();
     }
@@ -278,7 +278,7 @@
       foodOnly,
       errBox);
     const m = NL.modal((existing ? 'Edit ' : 'Add ') + noun, body, [el('button.btn', { onclick: () => m.close() }, 'Cancel'), saveBtn],
-      { wide: true, sticky: true, sub: existing ? existing.code + ' · ' + existing.status : 'New items start as drafts until someone approves them.' });
+      { wide: true, sticky: true, sub: existing ? existing.code : 'New items appear in Needs review until someone approves them.' });
     sync();
     name.focus();
   }

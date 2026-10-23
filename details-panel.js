@@ -218,9 +218,6 @@
           catch (error) { button.disabled = false; button.textContent = '✓ Reviewed & approve'; NL.toast(error.message || 'Could not save the review.'); }
         } }, '✓ Reviewed & approve')
       : null;
-    const backToDraft = i.status === 'approved'
-      ? el('button.btn.ghost.sm', { onclick: () => { store.setStatus(i.id, 'draft'); NL.app.refresh(); } }, 'Back to draft')
-      : null;
     const reviewHistory = canReview && i.reviewHistory && i.reviewHistory.length
       ? section('Review history', el('ul.pt-sheets', {}, i.reviewHistory.map((r) => el('li', {},
           el('b', {}, r.reviewerName || 'Unknown user'), el('div.faint', {}, NL.dateTime(r.reviewedAt))))))
@@ -254,10 +251,8 @@
             el('span.pt-chip', { title: c.visibility === 'private' ? 'Private — only you can see this category' : 'Shared with Pantry members' },
               c.name + (c.visibility === 'private' ? ' · Private' : ''))),
           el('span.pt-chip', {}, store.ITEM_TYPES.find((t) => t.key === i.itemType).label),
-          el('span.pt-chip.' + (i.status === 'draft' ? 'draft' : 'ok'), {}, i.status),
           i.reviewedAt ? el('span.pt-chip.ok', { title: 'Reviewed ' + NL.dateTime(i.reviewedAt) }, 'Reviewed by ' + (i.reviewerName || (i.reviewedByPerson && i.reviewedByPerson.name) || 'Unknown user')) : null,
-          approve,
-          backToDraft),
+          approve),
         el('div.faint', {}, i.code + (i.internalCode ? ' · internal ' + i.internalCode : '') + ' · updated ' + NL.timeAgo(i.updatedAt) + (i.updatedByPerson ? ' by ' + i.updatedByPerson.name : '')),
         switcher),
       i.issues.length ? el('div.pt-note.warn.pt-issues', {}, el('b', {}, 'Needs review'), el('ul', {}, i.issues.map((t) => el('li', {}, t)))) : null,

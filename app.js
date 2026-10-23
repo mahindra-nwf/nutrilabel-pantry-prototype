@@ -2,7 +2,7 @@
    Every data change goes through store.*; then we re-render. */
 (function () {
   const { el } = NL;
-  const LIST_VIEWS = ['all', 'food', 'packaging', 'review', 'drafts'];
+  const LIST_VIEWS = ['all', 'food', 'packaging', 'review'];
   const VIEWS = [...LIST_VIEWS, 'suppliers', 'bin'];
   const PANEL_MIN = 320, PANEL_DEFAULT = 580;
 
