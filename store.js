@@ -807,7 +807,8 @@
     ME = s.me.id;
     db = {
       version: 1, seq: 0, files: db.files,
-      people: s.people.map((p, k) => ({ id: p.id, name: p.name, email: p.email, role: p.role, title: p.role, initials: initials(p.name), color: PAL[k % PAL.length] })),
+      // your own entry uses your Pantry level (s.me.role), not your organization role, so Pantry managers see Reviewed
+      people: s.people.map((p, k) => ({ id: p.id, name: p.name, email: p.email, role: p.id === ME ? s.me.role : p.role, title: p.role, initials: initials(p.name), color: PAL[k % PAL.length] })),
       ingredients: s.ingredients, categories: s.categories || [], categoryFeature: Array.isArray(s.categories), suppliers: s.suppliers, quotes: s.quotes, bin: s.bin,
     };
     if (!person(ME)) db.people.push({ id: ME, name: 'You', email: '', role: s.me.role, title: s.me.role, initials: 'Y', color: PAL[0] });
