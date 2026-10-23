@@ -1,10 +1,9 @@
 /* ingredient-list.js — the Raw Materials table: one row per ingredient × supplier, filters, sort, row actions. */
 (function () {
   const { el, money } = NL;
-  const TITLES = { all: 'All items', food: 'Food', packaging: 'Packaging', review: 'Needs review', drafts: 'Drafts' };
+  const TITLES = { all: 'All items', food: 'Food', packaging: 'Packaging', review: 'Needs review' };
   const SUBS = {
     review: 'Unknown nutrition values, unverified allergens, missing statements, no supplier, no price or a price older than 6 months.',
-    drafts: 'Added but not approved yet. The Recipe Builder labels these “draft”.',
   };
   const resetFilters = () => NL.app.go({ category: '', supplierId: '', allergens: [], query: '' }, { replace: true });
 
@@ -103,7 +102,6 @@
       el('td.pt-name', {},
         el('div.pt-name-line', {},
           el('b', {}, i.name),
-          i.status === 'draft' ? el('span.pt-chip.draft', { title: 'Not approved yet' }, 'draft') : null,
           i.issues.length ? el('span.pt-chip.review', { title: i.issues.join('\n') }, '⚠ ' + i.issues.length) : null),
         el('div.pt-sub', {}, i.code + (i.category ? ' · ' + i.category : ''))),
       supplierCell(i, r),

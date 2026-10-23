@@ -21,7 +21,7 @@
             const q = r.source && r.source.quote;
             return el('div.pt-dup-row', {},
               el('div', {},
-                el('div', {}, el('button.pt-link', { onclick: () => { m.close(); NL.app.openPanel(r.ingredientId, r.source && r.source.supplierId); } }, r.name), ' ', el('span.faint', {}, r.code + (r.category ? ' · ' + r.category : '') + ' · ' + r.status)),
+                el('div', {}, el('button.pt-link', { onclick: () => { m.close(); NL.app.openPanel(r.ingredientId, r.source && r.source.supplierId); } }, r.name), ' ', el('span.faint', {}, r.code + (r.category ? ' · ' + r.category : ''))),
                 el('div.faint', {}, 'Row ' + (idx + 1) + (r.source && r.source.preferred ? ' · ★ Preferred' : '') + ' · ' +
                   (q ? (q.price != null ? money(q.price) + ' / ' + (q.packQty != null ? NL.num(q.packQty) + ' ' : '') + q.uom : 'Price not recorded') + ' · ' + NL.date(q.quoteDate) + ' · ' + (r.source.hasNutrition ? 'Spec nutrition available' : 'Spec nutrition incomplete') + (q.sku ? ' · Item ' + q.sku : '') : 'No supplier'))),
               el('span.spacer'),

@@ -337,6 +337,7 @@
       if (!cq) out.push('No price yet');
       else if (Date.now() - cq.quoteDate > 180 * D) out.push('Price older than 6 months');
     }
+    if (!out.length) out.push('Review required');
     return out;
   }
 
@@ -367,7 +368,6 @@
       if (f.view === 'food' && i.itemType === 'packaging') return false;
       if (f.view === 'packaging' && i.itemType !== 'packaging') return false;
       if (f.view === 'review' && !i.issues.length) return false;
-      if (f.view === 'drafts' && i.status !== 'draft') return false;
       if (f.category && i.category !== f.category && !(i.categoryIds || []).includes(f.category)) return false;
       if (f.allergens && f.allergens.length && !f.allergens.some((a) => i.allergens.includes(a))) return false;
       if (f.supplierId && !i.sources.some((r) => r.supplierId === f.supplierId)) return false;
@@ -379,7 +379,7 @@
     const all = db.ingredients.map(deco);
     return {
       all: all.length, food: all.filter((i) => i.itemType !== 'packaging').length, packaging: all.filter((i) => i.itemType === 'packaging').length,
-      review: all.filter((i) => i.issues.length).length, drafts: all.filter((i) => i.status === 'draft').length,
+      review: all.filter((i) => i.issues.length).length,
       suppliers: db.suppliers.length, bin: listBin().length,
     };
   }
@@ -479,8 +479,6 @@
     touch(i); save();
     return getIngredient(id);
   }
-  // NLv4 status column: draft → approved (Recipe Builder labels drafts)
-  function setStatus(id, status) { const i = ing(id); if (!i) return; i.status = status; touch(i); save(); }
   async function reviewIngredient(id) {
     const i = ing(id); if (!i) throw new Error('Ingredient not found.');
     if (LIVE) {
@@ -831,7 +829,7 @@
     isLive: LIVE,
     NUTRIENTS, ALLERGENS, TREE_NUTS, WEIGHT_UOMS, UNIT_TO_G, SUPPLIER_CATEGORIES, ITEM_TYPES, BIN_HOURS,
     me, listIngredients, counts, getIngredient, categories, supportsCategories, customCategories, createCategory, updateCategory, deleteCategory, uoms, packConfigs, findByName,
-    createIngredient, updateIngredient, setStatus, reviewIngredient,
+    createIngredient, updateIngredient, reviewIngredient,
     addSpecSheet, sheetFile, setCurrentSheet, recycleSpecSheet,
     listSuppliers, getSupplier, saveSupplier, recycleSupplier,
     quoteHistory, getQuote, saveQuote, setPreferred, recycleQuote, recycleSupplierRow, recycleIngredient,
