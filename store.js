@@ -358,6 +358,9 @@
   function touch(i) {
     i.updatedAt = Date.now(); i.updatedBy = ME;
     i.reviewedAt = null; i.reviewedBy = null; i.reviewerName = null;
+    // Live: an editor's change awaits a manager's Reviewed or Undo (the database keeps the version before it)
+    const p = person(ME);
+    if (LIVE && p && p.role === 'editor' && !i.changeReview) i.changeReview = { id: null, action: 'changed', editors: [p.name], lastChangedAt: Date.now() };
   }
 
   /* ---------- ingredients ---------- */
@@ -493,6 +496,13 @@
     i.reviewedAt = at; i.reviewedBy = ME; i.reviewerName = reviewer ? reviewer.name : 'You';
     i.reviewHistory = [{ id: uid('rv'), reviewedAt: at, reviewedBy: ME, reviewerName: i.reviewerName }, ...(i.reviewHistory || [])];
     save();
+  }
+  // Undo an editor's change: the ingredient, its prices and its categories go back to how they were (Live, managers)
+  async function undoChange(reviewId) {
+    const res = await fetch('/api/pantry/changes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reviewId }) });
+    const out = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(out.error || 'Could not undo the change.');
+    await sync();
   }
   function returnToReview(id) {
     const i = ing(id); if (!i) throw new Error('Ingredient not found.');
@@ -837,7 +847,7 @@
     isLive: LIVE,
     NUTRIENTS, ALLERGENS, TREE_NUTS, WEIGHT_UOMS, UNIT_TO_G, SUPPLIER_CATEGORIES, ITEM_TYPES, BIN_HOURS,
     me, listIngredients, counts, getIngredient, categories, supportsCategories, customCategories, createCategory, updateCategory, deleteCategory, uoms, packConfigs, findByName,
-    createIngredient, updateIngredient, reviewIngredient, returnToReview,
+    createIngredient, updateIngredient, reviewIngredient, returnToReview, undoChange,
     addSpecSheet, sheetFile, setCurrentSheet, recycleSpecSheet,
     listSuppliers, getSupplier, saveSupplier, recycleSupplier,
     quoteHistory, getQuote, saveQuote, setPreferred, recycleQuote, recycleSupplierRow, recycleIngredient,

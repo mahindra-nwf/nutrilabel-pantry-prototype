@@ -250,6 +250,19 @@
           if (!(await NL.confirm('Return to review?', 'The item will show its warnings again. The earlier review remains in the audit trail.', { ok: 'Return to review' }))) return;
           store.returnToReview(i.id); NL.app.refresh(); NL.toast(i.name + ' returned to Needs review.');
         } }, 'Return to review') : null;
+    // an editor's change waiting for a manager: Reviewed accepts it, Undo puts the earlier version back
+    const change = i.changeReview;
+    const changeNote = change ? el('div.pt-note.pt-change', {},
+      el('span.pt-review-txt', {}, 'Awaiting review'), ' ',
+      (change.action === 'created' ? 'Added by ' : 'Changed by ') + change.editors.join(', ') + ' · ' + NL.dateTime(change.lastChangedAt),
+      canReview && change.id ? el('button.btn.ghost.sm', { style: 'margin-left:8px', onclick: async (e) => {
+        const button = e.currentTarget;
+        const what = change.action === 'created' ? i.name + ' will be archived.' : i.name + ', its prices and its categories go back to how they were before ' + change.editors.join(', ') + ' changed them.';
+        if (!(await NL.confirm('Undo this change?', what, { ok: 'Undo' }))) return;
+        button.disabled = true; button.textContent = 'Undoing…';
+        try { await store.undoChange(change.id); NL.app.refresh(); NL.toast('Change to ' + i.name + ' undone.'); }
+        catch (error) { button.disabled = false; button.textContent = 'Undo'; NL.toast(error.message || 'Could not undo the change.'); }
+      } }, 'Undo') : null) : null;
     const reviewHistory = canReview && i.reviewHistory && i.reviewHistory.length
       ? section('Review history', el('ul.pt-sheets', {}, i.reviewHistory.map((r) => el('li', {},
           el('b', {}, r.reviewerName || 'Unknown user'), el('div.faint', {}, NL.dateTime(r.reviewedAt))))))
@@ -286,6 +299,7 @@
           reviewAction),
         el('div.faint', {}, i.code + (i.internalCode ? ' · internal ' + i.internalCode : '') + ' · updated ' + NL.timeAgo(i.updatedAt) + (i.updatedByPerson ? ' by ' + i.updatedByPerson.name : '')),
         switcher),
+      changeNote,
       i.reviewedAt ? el('p.pt-ok-txt', {}, 'Reviewed by ' + (i.reviewerName || (i.reviewedByPerson && i.reviewedByPerson.name) || 'Unknown user') + ' · ' + NL.dateTime(i.reviewedAt)) : null,
       i.issues.length ? el('div.pt-note.warn.pt-issues', {}, el('b', {}, 'Needs review'), el('ul', {}, i.issues.map((t) => el('li', {}, t)))) : null,
       el('div.pt-det-body', {}, left, right),
