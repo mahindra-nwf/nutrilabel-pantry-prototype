@@ -1,7 +1,7 @@
 /* details-panel.js — right-hand Details: nutrition (per supplier), allergens, statement, notes, spec sheets,
    price history, product profile. Click-to-edit fields save straight away, like Raw Materials. */
 (function () {
-  const { el, money } = NL;
+  const { el, field, money } = NL;
   let editingN = null;   // quote id whose nutrition table is in edit mode
   let lastKey = null;
 
@@ -65,16 +65,20 @@
   }
   function nutritionEditor(q, seedN) {
     const inputs = {};
+    const basis = el('input.txt', { value: q.nutritionBasis || '100 g', maxLength: 100, placeholder: 'e.g. 100 g, 1 packet (6 ml), 1/4 cup' });
     const grid = el('div.pt-nut-edit', {}, store.NUTRIENTS.map((x) => {
       inputs[x.key] = el('input.txt.num-in', { type: 'number', min: 0, step: 'any', placeholder: 'Unknown', value: seedN && seedN[x.key] != null ? seedN[x.key] : '' });
       return el('label.ind' + x.indent, {}, el('span', {}, x.label + ' (' + x.unit + ')'), inputs[x.key]);
     }));
     const saveIt = () => {
+      const nutritionBasis = basis.value.trim();
+      if (!nutritionBasis) { basis.focus(); return NL.toast('Enter what these nutrition values are based on.'); }
       const n = {}; store.NUTRIENTS.forEach((x) => { n[x.key] = NL.readNum(inputs[x.key].value); });
-      store.saveQuote({ n }, q.id);
+      store.saveQuote({ n, nutritionBasis }, q.id);
       editingN = null; NL.app.refresh(); NL.toast('Spec sheet nutrition saved.');
     };
-    return el('div', {}, grid, el('div.pt-inline-btns', {}, el('span.faint', {}, 'Blank = unknown. Enter 0 only if it is known to be zero.'), el('span.spacer'),
+    return el('div', {}, field('Values shown per', basis, 'Copy the basis printed on the spec sheet, such as “100 g” or “1 packet (6 ml)”.'), grid,
+      el('div.pt-inline-btns', {}, el('span.faint', {}, 'Blank = unknown. Enter 0 only if it is known to be zero.'), el('span.spacer'),
       el('button.btn.sm', { onclick: () => { editingN = null; NL.app.refresh(); } }, 'Cancel'), el('button.btn.sm.primary', { onclick: saveIt }, 'Save')));
   }
 
@@ -194,13 +198,16 @@
     if (food) {
       const supN = q && q.n && Object.values(q.n).some((v) => v != null) ? q.n : null;
       const title = q ? (supN ? 'Nutrition Facts — ' + row.supplierName + ' spec sheet' : 'Nutrition Facts (ingredient baseline)') : 'Nutrition Facts';
-      nutrition = section(title + ' · per 100 g',
+      const basis = supN ? (q.nutritionBasis || '100 g') : '100 g';
+      const isPer100g = basis.trim().toLocaleLowerCase().replace(/\s+/g, '') === '100g';
+      nutrition = section(title + ' · per ' + basis,
+        supN && !isPer100g ? el('p.pt-note.warn', {}, 'Notice: these values are shown per ' + basis + ', not per 100 g. They cannot be used as the ingredient baseline until they are converted to per 100 g.') : null,
         q && !supN ? el('p.pt-note.warn', {}, 'No spec sheet nutrition for this supplier. Values below are the ingredient baseline.') : null,
         editingN && q && editingN === q.id ? nutritionEditor(q, supN || i.n)
           : nutritionTable(supN || i.n, !!q, () => { editingN = q.id; NL.app.refresh(); }),
         q && editingN !== q.id ? el('div.faint.pt-under', {}, 'Click the table to edit this supplier’s spec sheet nutrition.')
           : !q ? el('div.faint.pt-under', {}, 'Baseline values. Change them with Edit below.') : null,
-        supN && editingN !== q.id && JSON.stringify(supN) !== JSON.stringify(i.n) ? el('button.btn.sm.pt-under', {
+        supN && isPer100g && editingN !== q.id && JSON.stringify(supN) !== JSON.stringify(i.n) ? el('button.btn.sm.pt-under', {
           title: 'Copy these values into the ingredient’s own nutrition (used when no supplier is chosen)',
           onclick: async () => {
             if (!(await NL.confirm('Use as ingredient baseline?', 'Replace ' + i.name + '’s baseline nutrition with ' + row.supplierName + '’s spec sheet values?', { ok: 'Use these values' }))) return;
