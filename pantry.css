@@ -272,3 +272,8 @@ p.pt-review-txt { display: inline-block; padding: 3px 8px; margin: 0; }
 .pt-chip.change { background: var(--warn-soft); color: var(--text); border-color: transparent; }
 .pt-change { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .pt-change-btns { display: flex; gap: 6px; }
+
+/* Playground inside the company site: a banner that can't be missed (store.js) */
+.playground-banner { position: sticky; top: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap;
+  padding: 8px 16px; background: #fde68a; color: #422006; font: 13px/1.4 system-ui, sans-serif; text-align: center; }
+.playground-banner button { border: 1px solid #92400e; background: #fff7ed; color: #422006; border-radius: 6px; padding: 4px 10px; font-weight: 600; cursor: pointer; }
