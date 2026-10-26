@@ -9,6 +9,26 @@
   // Playground (and this site on its own) = the demo with made-up ingredients and suppliers. Live = the same screens
   // on the organization's real data (database), starting empty until it has loaded.
   const LIVE = location.pathname.startsWith('/pantry/') && !/(?:^|; )nl_mode=playground(?:;|$)/.test(document.cookie);
+
+  // Playground inside the company site: say so loudly, every time. Nothing here reaches the database or other people,
+  // and the choice sticks in this browser (a cookie set on Home), so it is easy to forget.
+  if (!LIVE && location.pathname.startsWith('/pantry/')) {
+    const banner = () => {
+      if (document.getElementById('playgroundBanner')) return;
+      const b = document.createElement('div');
+      b.id = 'playgroundBanner'; b.className = 'playground-banner'; b.setAttribute('role', 'status');
+      b.innerHTML = '<span><b>Playground:</b> sample data, saved only in this browser. Nobody else sees it, and nothing here is saved for your team.</span>';
+      const live = document.createElement('button');
+      live.type = 'button'; live.textContent = 'Switch to Live';
+      live.onclick = () => {
+        document.cookie = 'nl_mode=live; path=/; max-age=31536000; samesite=lax' + (location.protocol === 'https:' ? '; secure' : '');
+        location.reload();
+      };
+      b.append(live);
+      document.body.prepend(b);
+    };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', banner); else banner();
+  }
   const KEY = LIVE ? 'nlpantry.live.v1' : 'nlpantry.v1';
   const PREF = 'nlpantry.pref.';
   let ME = 'u1';
