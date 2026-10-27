@@ -346,7 +346,10 @@
   function reviewIssues(i, rows) {
     const out = [];
     if (isFood(i)) {
-      const miss = nMissing(i.n);
+      // the chosen supplier's spec sheet counts when it has values (that is what the details panel shows), else the baseline
+      const pick = rows.find((r) => r.preferred) || rows[0];
+      const sheet = pick && pick.quote.n && Object.values(pick.quote.n).some((v) => v != null) ? pick.quote.n : null;
+      const miss = nMissing(sheet || i.n);
       if (miss) out.push(miss + ' nutrition value' + (miss > 1 ? 's' : '') + ' unknown');
       if (i.allergenStatus === 'not_declared' || !i.allergenStatus) out.push('Allergens not verified');
       if (!String(i.statement || '').trim()) out.push('No ingredient statement');
